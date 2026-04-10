@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Layout } from '@/components/Layout';
 import { LegacyTab } from '@/tabs/LegacyTab';
 import { DashboardTab } from '@/tabs/DashboardTab';
@@ -35,17 +35,9 @@ export default function App() {
   return (
     <ThemeProvider defaultTheme="warm">
       <Layout view={view} setView={setView}>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={view}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.25 }}
-          >
-            <Active setView={setView} />
-          </motion.div>
-        </AnimatePresence>
+        <ErrorBoundary key={view} name={view}>
+          <Active setView={setView} />
+        </ErrorBoundary>
       </Layout>
     </ThemeProvider>
   );

@@ -16,7 +16,7 @@ export function Scene({ children, cameraPosition = [0, 0, 80], enableStars = tru
       dpr={[1, 2]}
     >
       <color attach="background" args={['#0a0e1a']} />
-      <fog attach="fog" args={['#0a0e1a', 60, 200]} />
+      <fog attach="fog" args={['#0a0e1a', 120, 450]} />
 
       {/* Lighting setup for glass refraction */}
       <ambientLight intensity={0.3} />

@@ -75,10 +75,14 @@ function buildGraph() {
   // Featured edges (R001 → R002 → R003 etc.)
   for (const r of featured) for (const t of r.trig) addEdge(r.id, t);
 
-  // Bucket all rule ids by domain for fast random selection
+  // Bucket all rule ids by domain for fast random selection.
+  // Featured RULES include domains (e.g. "Validation") that aren't in SCALE_DOMS,
+  // so initialize buckets dynamically from the rules themselves.
   const byDomain = {};
-  SCALE_DOMS.forEach((d) => { byDomain[d] = []; });
-  all.forEach((r) => byDomain[r.dom].push(r.id));
+  for (const r of all) {
+    if (!byDomain[r.dom]) byDomain[r.dom] = [];
+    byDomain[r.dom].push(r.id);
+  }
 
   // Pad with synthesized edges until we hit TOTAL_EDGES
   let i = 0;
@@ -108,7 +112,7 @@ export function GraphTab() {
   const positions = useMemo(() => {
     const nodes = rules.map((r) => ({ id: r.id }));
     const links = edges.map((e) => ({ source: e.source, target: e.target }));
-    return compute3DLayout(nodes, links, { iterations: 300, charge: -150, linkDistance: 10 });
+    return compute3DLayout(nodes, links, { iterations: 400, charge: -35, linkDistance: 4 });
   }, [rules, edges]);
 
   // Highlight set: selected rule + its direct neighbors
@@ -126,7 +130,7 @@ export function GraphTab() {
 
   return (
     <div className="relative h-[calc(100vh-120px)] w-full overflow-hidden">
-      <Scene cameraPosition={[0, 0, 70]}>
+      <Scene cameraPosition={[0, 0, 130]}>
         {edges.map((e, i) => {
           const f = positions[e.source];
           const t = positions[e.target];
