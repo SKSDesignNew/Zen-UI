@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Warm (Executive) theme — default */
+    --background: 48 20% 96%;
+    --foreground: 228 30% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 228 30% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 228 30% 12%;
+    --primary: 228 30% 12%;
+    --primary-foreground: 48 20% 96%;
+    --secondary: 40 16% 92%;
+    --secondary-foreground: 30 18% 24%;
+    --muted: 40 16% 92%;
+    --muted-foreground: 36 8% 52%;
+    --accent: 36 44% 51%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 14 58% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 158 38% 39%;
+    --success-foreground: 0 0% 100%;
+    --warning: 36 44% 51%;
+    --warning-foreground: 0 0% 100%;
+    --info: 210 42% 50%;
+    --info-foreground: 0 0% 100%;
+    --border: 42 20% 82%;
+    --input: 42 20% 82%;
+    --ring: 36 44% 51%;
+    --radius: 0.75rem;
+  }
+
+  .frost {
+    /* Frost (Modern) theme */
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 222 47% 11%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 214 32% 94%;
+    --secondary-foreground: 215 25% 27%;
+    --muted: 214 32% 94%;
+    --muted-foreground: 215 16% 57%;
+    --accent: 221 83% 53%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 160 84% 30%;
+    --success-foreground: 0 0% 100%;
+    --warning: 32 95% 44%;
+    --warning-foreground: 0 0% 100%;
+    --info: 217 91% 60%;
+    --info-foreground: 0 0% 100%;
+    --border: 214 32% 89%;
+    --input: 214 32% 89%;
+    --ring: 221 83% 53%;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  html, body, #root { height: 100%; }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-border rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-muted-foreground/50; }
+}
