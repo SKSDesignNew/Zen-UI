@@ -20,7 +20,8 @@ export const NAV_ITEMS = [
   { k: 'discovery', label: 'Discovery', Icon: Search },
   { k: 'zresults', label: 'Z+ Results', Icon: BarChart3 },
   // --- divider after zresults ---
-  { k: 'graph', label: 'Z+Lens', Icon: CircleDot },
+  { k: 'zg2', label: 'Z+Lens', Icon: Network },
+  { k: 'graph', label: 'Z+Lens2', Icon: CircleDot },
 ];
 
 export function Layout({ view, setView, children }) {

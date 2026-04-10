@@ -8,6 +8,7 @@ import { PillarsTab } from '@/tabs/PillarsTab';
 import { UseCaseTab } from '@/tabs/UseCaseTab';
 import { DiscoveryTab } from '@/tabs/DiscoveryTab';
 import { GraphTab } from '@/tabs/GraphTab';
+import { ZG2Tab } from '@/tabs/ZG2Tab';
 import { LineageTab } from '@/tabs/LineageTab';
 import { EngineTab } from '@/tabs/EngineTab';
 import { SandboxTab } from '@/tabs/SandboxTab';
@@ -20,6 +21,7 @@ const VIEWS = {
   usecase: UseCaseTab,
   discovery: DiscoveryTab,
   zresults: ZPlusResultsTab,
+  zg2: ZG2Tab,
   graph: GraphTab,
   lineage: LineageTab,
   engine: EngineTab,
