@@ -67,3 +67,50 @@ export const DOM_COUNTS_MAP = SCALE_DOMS.reduce((a, d, i) => {
   a[d] = Math.round(100000 * dist[i]);
   return a;
 }, {});
+
+// Cross-domain coupling: each rule preferentially triggers ~70% intra-domain,
+// ~30% to a related domain (forming the dense call graph BFSI systems actually have).
+const DOMAIN_NEIGHBORS = {
+  Authorization: ['Fraud', 'Credit', 'Settlement'],
+  Fraud: ['Authorization', 'Risk', 'Compliance'],
+  Credit: ['Authorization', 'Pricing'],
+  Pricing: ['Credit', 'Settlement'],
+  Compliance: ['Fraud', 'Reporting'],
+  Settlement: ['Authorization', 'Pricing', 'Reporting'],
+  Reporting: ['Settlement', 'Compliance', 'Risk'],
+  Risk: ['Fraud', 'Reporting'],
+  Operations: ['Authorization', 'Settlement', 'Security'],
+  Security: ['Authorization', 'Operations'],
+};
+
+/**
+ * Generate ~300K dependency edges for the 100K rules.
+ * Each rule triggers 2-4 downstream rules. Realistic call-graph density.
+ */
+export function genScaleEdges(rules) {
+  const links = [];
+  const N = rules.length;
+  // Pre-bucket rule indices by domain for fast random selection
+  const byDomain = {};
+  SCALE_DOMS.forEach((d) => { byDomain[d] = []; });
+  for (let i = 0; i < N; i++) byDomain[rules[i].dom].push(i);
+
+  const seed = (i) => (Math.sin(i * 12.9898 + 78.233) % 1 + 1) % 1;
+
+  for (let i = 0; i < N; i++) {
+    const r = rules[i];
+    const triggerCount = 2 + Math.floor(seed(i + 0.7) * 3); // 2-4 triggers
+    const neighbors = DOMAIN_NEIGHBORS[r.dom] || [r.dom];
+    for (let k = 0; k < triggerCount; k++) {
+      // 70% intra-domain, 30% cross-domain to a neighbor
+      const cross = seed(i * 7 + k * 3.1) > 0.7;
+      const targetDom = cross ? neighbors[Math.floor(seed(i * 11 + k) * neighbors.length)] : r.dom;
+      const pool = byDomain[targetDom];
+      if (!pool || pool.length === 0) continue;
+      const targetIdx = pool[Math.floor(seed(i * 13 + k * 5) * pool.length)];
+      if (targetIdx === i) continue;
+      links.push({ source: rules[i].id, target: rules[targetIdx].id });
+    }
+  }
+  return links;
+}
