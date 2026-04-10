@@ -53,17 +53,20 @@ export function ZG2Tab() {
           file: r.file,
           lines: r.lines,
           type: r.type,
-          color: SCALE_DOM_COLORS[r.dom],
-          size: r.crit === 'HIGH' ? 6 : r.crit === 'MEDIUM' ? 4 : 3,
         };
       });
-      // Cosmograph wants link source/target as numeric indices for fastest path.
+      // Cosmograph wants link source/target as both string ids and numeric indices.
       const links = [];
       for (let k = 0; k < edges.length; k++) {
         const s = idToIndex.get(edges[k].source);
         const t = idToIndex.get(edges[k].target);
         if (s !== undefined && t !== undefined) {
-          links.push({ sourceIndex: s, targetIndex: t });
+          links.push({
+            source: edges[k].source,
+            target: edges[k].target,
+            sourceIndex: s,
+            targetIndex: t,
+          });
         }
       }
       setData({ points, links });
@@ -72,15 +75,19 @@ export function ZG2Tab() {
     return () => { cancelled = true; clearTimeout(id); };
   }, []);
 
-  // Domain filter passes a per-point opacity scaled into the color column
-  const filteredPoints = useMemo(() => {
-    if (!data.points.length) return data.points;
-    if (domFilter === 'All') return data.points;
-    return data.points.map((p) => ({
-      ...p,
-      color: p.dom === domFilter ? SCALE_DOM_COLORS[p.dom] : '#1a1f2e',
-    }));
-  }, [data.points, domFilter]);
+  // Domain filter is applied via the colorByFn closure (no array rebuild needed)
+  const colorByFn = useMemo(
+    () => (dom) => {
+      if (domFilter !== 'All' && dom !== domFilter) return '#1a1f2e';
+      return SCALE_DOM_COLORS[dom] || '#94a3b8';
+    },
+    [domFilter]
+  );
+
+  const sizeByFn = useMemo(
+    () => (crit) => (crit === 'HIGH' ? 6 : crit === 'MEDIUM' ? 4 : 3),
+    []
+  );
 
   // Search → focus the matching point
   const onSearch = (term) => {
@@ -109,16 +116,18 @@ export function ZG2Tab() {
       {!loading && (
         <Cosmograph
           ref={cosmographRef}
-          points={filteredPoints}
+          points={data.points}
           links={data.links}
           pointIdBy="id"
           pointIndexBy="index"
-          pointColorBy="color"
+          pointColorBy="dom"
+          pointColorByFn={colorByFn}
           pointLabelBy="id"
-          pointSizeBy="size"
-          linkSourceBy="sourceIndex"
+          pointSizeBy="crit"
+          pointSizeByFn={sizeByFn}
+          linkSourceBy="source"
           linkSourceIndexBy="sourceIndex"
-          linkTargetBy="targetIndex"
+          linkTargetBy="target"
           linkTargetIndexBy="targetIndex"
           backgroundColor="#0a0e1a"
           linkColor={[1, 1, 1, 0.06]}
