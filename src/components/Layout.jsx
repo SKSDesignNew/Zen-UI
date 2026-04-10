@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import {
-  Zap, LayoutDashboard, Pentagon, Diamond, List, CircleDot, Network,
+  Zap, AlertTriangle, Pentagon, Diamond, List, CircleDot, Network,
   Link2, Settings2, FlaskConical, SlidersHorizontal,
 } from 'lucide-react';
 import { ZenLogo } from './ZenLogo';
@@ -10,14 +10,14 @@ import { cn } from '@/lib/utils';
 
 export const NAV_ITEMS = [
   { k: 'legacy', label: 'The Challenge', Icon: Zap },
-  { k: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
+  { k: 'aitrap', label: 'The AI Trap', Icon: AlertTriangle },
+  { k: 'engine', label: 'Z+ vs LLM', Icon: Settings2 },
   { k: 'pillars', label: '5 Pillars', Icon: Pentagon },
   { k: 'usecase', label: 'Use Case', Icon: Diamond },
   { k: 'inventory', label: 'Rules', Icon: List },
   { k: 'graph', label: 'Z+Graph', Icon: CircleDot },
   { k: 'zg2', label: 'Z+G2', Icon: Network },
   { k: 'lineage', label: 'Lineage', Icon: Link2 },
-  { k: 'engine', label: 'LLM vs ZF', Icon: Settings2 },
   { k: 'sandbox', label: 'Sandbox', Icon: FlaskConical },
   { k: 'whatif', label: 'What-If', Icon: SlidersHorizontal },
 ];

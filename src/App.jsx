@@ -3,7 +3,7 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Layout } from '@/components/Layout';
 import { LegacyTab } from '@/tabs/LegacyTab';
-import { DashboardTab } from '@/tabs/DashboardTab';
+import { AITrapTab } from '@/tabs/AITrapTab';
 import { PillarsTab } from '@/tabs/PillarsTab';
 import { UseCaseTab } from '@/tabs/UseCaseTab';
 import { InventoryTab } from '@/tabs/InventoryTab';
@@ -16,7 +16,7 @@ import { WhatIfTab } from '@/tabs/WhatIfTab';
 
 const VIEWS = {
   legacy: LegacyTab,
-  dashboard: DashboardTab,
+  aitrap: AITrapTab,
   pillars: PillarsTab,
   usecase: (props) => <UseCaseTab onContinue={() => props.setView('pillars')} />,
   inventory: InventoryTab,
