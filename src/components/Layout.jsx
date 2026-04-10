@@ -47,29 +47,35 @@ export function Layout({ view, setView, children }) {
         </div>
       </header>
 
-      {/* Nav tabs */}
-      <nav className="flex items-center gap-1 overflow-x-auto border-b bg-card/60 px-6 backdrop-blur-lg">
-        {NAV_ITEMS.map(({ k, label, Icon }) => {
+      {/* Nav tabs — pill style with active glow */}
+      <nav className="tab-nav flex items-center gap-1 overflow-x-auto border-b bg-card/60 px-5 py-2 backdrop-blur-lg">
+        {NAV_ITEMS.map(({ k, label, Icon }, i) => {
           const active = view === k;
+          // Group separators: after engine (problem), after sandbox (solution), after zresults (proof)
+          const showDivider = k === 'engine' || k === 'sandbox' || k === 'zresults';
           return (
-            <button
-              key={k}
-              onClick={() => setView(k)}
-              className={cn(
-                'relative flex items-center gap-2 whitespace-nowrap px-4 py-3 text-sm font-medium transition-colors',
-                active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              <span>{label}</span>
-              {active && (
-                <motion.div
-                  layoutId="nav-active"
-                  className="absolute inset-x-0 bottom-0 h-0.5 bg-accent"
-                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            <div key={k} className="flex items-center">
+              <button
+                onClick={() => setView(k)}
+                className={cn(
+                  'group relative flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-3.5 py-2 text-[11.5px] transition-all duration-200',
+                  active
+                    ? 'border-accent/40 bg-accent/10 font-bold text-accent shadow-[0_0_12px_hsl(var(--accent)/0.15)]'
+                    : 'border-transparent font-medium text-muted-foreground hover:border-border hover:bg-border/30 hover:text-foreground'
+                )}
+              >
+                <Icon
+                  className={cn(
+                    'h-3.5 w-3.5 transition-opacity',
+                    active ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'
+                  )}
                 />
+                <span>{label}</span>
+              </button>
+              {showDivider && (
+                <div className="mx-1 h-4 w-px shrink-0 self-center bg-border" />
               )}
-            </button>
+            </div>
           );
         })}
       </nav>

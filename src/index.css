@@ -74,4 +74,6 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { @apply bg-border rounded-full; }
   ::-webkit-scrollbar-thumb:hover { @apply bg-muted-foreground/50; }
+  .tab-nav { -ms-overflow-style: none; scrollbar-width: none; }
+  .tab-nav::-webkit-scrollbar { display: none; }
 }
