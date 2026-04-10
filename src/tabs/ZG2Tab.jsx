@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, ArrowLeft, ChevronRight } from 'lucide-react';
+import { Home, ArrowLeft, ChevronRight, GripVertical } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -48,13 +48,41 @@ const CLUSTER_LINKS = [
   ['Reporting', 'Risk'],
 ];
 
-// Maps domain count → circle radius. Wider range than the reference so the
-// hub-spoke story is unmistakable from across a room.
+// Maps domain count → circle radius. Aggressive range so the hub-spoke story
+// is unmistakable from across a room — Authorization (370) and Security (372)
+// should be visibly ~2× larger than Risk (145).
 function radiusFor(count) {
   const minC = 140, maxC = 380;
-  const minR = 42, maxR = 64;
+  const minR = 38, maxR = 92;
   const t = Math.max(0, Math.min(1, (count - minC) / (maxC - minC)));
   return minR + t * (maxR - minR);
+}
+
+// Maps count → background fill opacity inside the circle. More rules = more
+// saturated tint = visually "weightier" / more critical to the overall system.
+function fillOpacityFor(count) {
+  const t = Math.max(0, Math.min(1, (count - 140) / 240));
+  return 0.06 + t * 0.22;
+}
+
+// Match a synthetic rule name in the right panel (e.g. "Card Status Validation")
+// to one of the 13 hand-authored RULES so clicking the chip selects a real
+// node in the call graph. Falls back to any RULE in the same domain.
+function matchDemoRule(ruleName, domain) {
+  const tokens = ruleName.toLowerCase().split(/[\s-]+/).filter((t) => t.length > 2);
+  let best = null;
+  let bestScore = 0;
+  for (const r of RULES) {
+    const rTokens = r.name.toLowerCase().split(/[\s-]+/).filter((t) => t.length > 2);
+    const score = tokens.filter((t) => rTokens.some((rt) => rt.includes(t) || t.includes(rt))).length;
+    if (score > bestScore) {
+      bestScore = score;
+      best = r;
+    }
+  }
+  if (best && bestScore > 0) return best;
+  // Fallback: any RULE in the same domain (most relevant)
+  return RULES.find((r) => r.dom === domain) || null;
 }
 
 // Smooth quadratic curve between two points so connections feel organic.
@@ -73,23 +101,25 @@ function curvePath(a, b) {
   return `M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`;
 }
 
-// Sub-graph node positions for the rule call graph (matches the reference's
-// vertical flow with branching).
+// Horizontal call graph layout — fills the wide canvas instead of the
+// narrow vertical column the reference uses. Left-to-right flow with
+// branching at R003 (R004/R005), R006 (R008/R009), and R009 (R010/R011).
 const RULE_POS = {
-  R001: { x: 280, y:  40 },
-  R002: { x: 280, y: 130 },
-  R003: { x: 280, y: 220 },
-  R004: { x: 150, y: 320 },
-  R005: { x: 410, y: 320 },
-  R006: { x: 280, y: 420 },
-  R007: { x: 460, y: 510 },
-  R008: { x: 110, y: 520 },
-  R009: { x: 330, y: 540 },
-  R010: {  x: 60, y: 640 },
-  R011: { x: 200, y: 650 },
-  R012: { x: 280, y: 750 },
-  R013: { x: 280, y: 850 },
+  R001: { x:  70, y: 360 },
+  R002: { x: 180, y: 360 },
+  R003: { x: 290, y: 360 },
+  R004: { x: 400, y: 220 },
+  R005: { x: 400, y: 500 },
+  R006: { x: 510, y: 360 },
+  R007: { x: 620, y: 180 },
+  R008: { x: 620, y: 360 },
+  R009: { x: 620, y: 540 },
+  R010: { x: 730, y: 260 },
+  R011: { x: 730, y: 460 },
+  R012: { x: 840, y: 360 },
+  R013: { x: 950, y: 360 },
 };
+const RULE_VIEWBOX = '0 0 1020 720';
 
 // ─── Main component ──────────────────────────────────────────────────────
 export function ZG2Tab() {
@@ -97,6 +127,32 @@ export function ZG2Tab() {
   const [drillDomain, setDrillDomain] = useState(null);
   const [selectedRule, setSelectedRule] = useState(null);
   const [hoveredCluster, setHoveredCluster] = useState(null);
+  const [leftWidth, setLeftWidth] = useState(64); // % of total — draggable
+  const containerRef = useRef(null);
+  const draggingRef = useRef(false);
+
+  // Drag-to-resize divider between left graph and right panel
+  const onDividerMouseDown = (e) => {
+    e.preventDefault();
+    draggingRef.current = true;
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
+    const onMove = (ev) => {
+      if (!draggingRef.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const pct = ((ev.clientX - rect.left) / rect.width) * 100;
+      setLeftWidth(Math.max(35, Math.min(85, pct)));
+    };
+    const onUp = () => {
+      draggingRef.current = false;
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
 
   const start = () => {
     setView('overview');
@@ -112,9 +168,12 @@ export function ZG2Tab() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-120px)] w-full overflow-hidden">
+    <div ref={containerRef} className="flex h-[calc(100vh-120px)] w-full overflow-hidden">
       {/* ─── LEFT PANE: graph canvas ─── */}
-      <div className="relative flex flex-1 flex-col border-r bg-muted/30">
+      <div
+        className="relative flex flex-col bg-muted/30"
+        style={{ width: `${leftWidth}%` }}
+      >
         {/* Top breadcrumb + Start/Back buttons */}
         <div className="flex items-center justify-between border-b bg-card/60 px-4 py-2 backdrop-blur-lg">
           <div className="flex items-center gap-2 text-xs">
@@ -191,8 +250,22 @@ export function ZG2Tab() {
         </div>
       </div>
 
+      {/* ─── DRAGGABLE DIVIDER ─── */}
+      <div
+        onMouseDown={onDividerMouseDown}
+        className="group relative flex w-2 cursor-col-resize items-center justify-center bg-border hover:bg-accent/40"
+        title="Drag to resize"
+      >
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-md bg-card p-0.5 opacity-0 shadow-md transition-opacity group-hover:opacity-100">
+          <GripVertical className="h-3 w-3 text-muted-foreground" />
+        </div>
+      </div>
+
       {/* ─── RIGHT PANE: info panel ─── */}
-      <div className="w-[420px] flex-shrink-0 overflow-auto bg-card">
+      <div
+        className="flex-1 overflow-auto bg-card"
+        style={{ width: `${100 - leftWidth}%` }}
+      >
         {view === 'overview' ? (
           <motion.div
             key="overview-panel"
@@ -298,14 +371,18 @@ function ClusterCanvas({ onSelect, hovered, setHovered }) {
             >
               {/* Soft outer glow on hover */}
               {isHovered && (
-                <circle r={r + 8} fill={color} opacity={0.12} />
+                <circle r={r + 10} fill={color} opacity={0.18} />
               )}
-              {/* Main circle */}
+              {/* Card-colored base so text stays readable */}
+              <circle r={r} fill="hsl(var(--card))" />
+              {/* Tinted overlay — saturation scales with rule count = "criticality weight" */}
+              <circle r={r} fill={color} fillOpacity={fillOpacityFor(count)} />
+              {/* Crisp border */}
               <circle
                 r={r}
-                fill="hsl(var(--card))"
+                fill="none"
                 stroke={color}
-                strokeWidth={isHovered ? 3 : 1.8}
+                strokeWidth={isHovered ? 3.2 : 2}
                 style={{ transition: 'stroke-width 0.2s' }}
               />
               {/* Domain name */}
@@ -448,9 +525,10 @@ function DrillCanvas({ domain, selectedRule, setSelectedRule }) {
         </span>
       </div>
       <svg
-        viewBox="0 0 540 920"
-        className="block w-full"
-        style={{ maxHeight: 'calc(100vh - 260px)' }}
+        viewBox={RULE_VIEWBOX}
+        className="block h-full w-full"
+        preserveAspectRatio="xMidYMid meet"
+        style={{ minHeight: 'calc(100vh - 280px)' }}
       >
         <defs>
           <marker
@@ -502,7 +580,7 @@ function DrillCanvas({ domain, selectedRule, setSelectedRule }) {
           const isSelected = selectedRule?.id === r.id;
           const isOnPath = highlightSet.has(r.id);
           const dim = selectedRule && !isOnPath;
-          const r0 = 30 + (r.crit === 'HIGH' ? 6 : r.crit === 'MEDIUM' ? 3 : 0);
+          const r0 = 36 + (r.crit === 'HIGH' ? 10 : r.crit === 'MEDIUM' ? 5 : 0);
           const color = DOM_COLORS[r.dom] || SCALE_DOM_COLORS[r.dom] || '#94a3b8';
           return (
             <g
@@ -512,12 +590,14 @@ function DrillCanvas({ domain, selectedRule, setSelectedRule }) {
               opacity={dim ? 0.3 : 1}
               onClick={() => setSelectedRule(r)}
             >
-              {isSelected && <circle r={r0 + 6} fill={color} opacity={0.18} />}
+              {isSelected && <circle r={r0 + 8} fill={color} opacity={0.22} />}
+              <circle r={r0} fill="hsl(var(--card))" />
+              <circle r={r0} fill={color} fillOpacity={r.crit === 'HIGH' ? 0.22 : r.crit === 'MEDIUM' ? 0.14 : 0.07} />
               <circle
                 r={r0}
-                fill="hsl(var(--card))"
+                fill="none"
                 stroke={color}
-                strokeWidth={isSelected ? 3 : isOnPath ? 2.2 : 1.6}
+                strokeWidth={isSelected ? 3.2 : isOnPath ? 2.4 : 1.8}
               />
               {/* Criticality dot top-right */}
               <circle
@@ -603,28 +683,46 @@ function DrillPanel({ domain, selectedRule, setSelectedRule, onBack }) {
         </CardContent>
       </Card>
 
-      {/* Rule types in this domain */}
-      <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-        Rule Types in this Domain
+      {/* Rule types in this domain — clickable, links to call-graph nodes */}
+      <div className="mb-2 flex items-center justify-between">
+        <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Rule Types in this Domain
+        </div>
+        <div className="text-[9px] italic text-muted-foreground/80">click to trace</div>
       </div>
       <div className="mb-5 grid grid-cols-2 gap-2">
-        {ruleTypes.map((rn, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-2 rounded-md border bg-card px-3 py-1.5"
-          >
-            <span
-              className="rounded px-1.5 py-0.5 font-mono text-[9px] font-bold"
-              style={{
-                background: SCALE_DOM_COLORS[domain] + '15',
-                color: SCALE_DOM_COLORS[domain],
-              }}
+        {ruleTypes.map((rn, i) => {
+          const matched = matchDemoRule(rn, domain);
+          const isActive = matched && selectedRule?.id === matched.id;
+          return (
+            <button
+              key={i}
+              onClick={() => matched && setSelectedRule(matched)}
+              className={cn(
+                'flex items-center gap-2 rounded-md border bg-card px-3 py-1.5 text-left transition-all',
+                matched
+                  ? 'cursor-pointer hover:-translate-y-px hover:border-accent hover:shadow-sm'
+                  : 'cursor-default opacity-60',
+                isActive && 'border-accent bg-accent/5 shadow-sm'
+              )}
+              title={matched ? `Trace ${matched.id} ${matched.name}` : 'Synthesized rule (no demo data)'}
             >
-              R{String(i + 1).padStart(3, '0')}
-            </span>
-            <span className="truncate text-[11px]">{rn}</span>
-          </div>
-        ))}
+              <span
+                className="rounded px-1.5 py-0.5 font-mono text-[9px] font-bold"
+                style={{
+                  background: SCALE_DOM_COLORS[domain] + '22',
+                  color: SCALE_DOM_COLORS[domain],
+                }}
+              >
+                R{String(i + 1).padStart(3, '0')}
+              </span>
+              <span className="flex-1 truncate text-[11px]">{rn}</span>
+              {matched && (
+                <ChevronRight className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Selected rule (from clicking the call graph) */}
