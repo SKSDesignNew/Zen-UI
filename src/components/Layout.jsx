@@ -30,9 +30,9 @@ export function Layout({ view, setView, children }) {
       {/* Top header */}
       <header className="flex items-center justify-between border-b bg-card/80 px-6 py-3 backdrop-blur-lg">
         <div className="flex items-center gap-3">
-          <ZenLogo size={40} />
+          <ZenLogo size={30} />
           <div className="flex items-center gap-3">
-            <span className="font-serif text-2xl font-bold tracking-tight">ZenPlus</span>
+            <span className="font-serif text-2xl font-bold tracking-tighter">Zen<sup className="text-[13px] font-bold text-accent" style={{ verticalAlign: 'super' }}>+</sup></span>
             <Badge variant="accent" className="text-[10px]">Enterprise Rules Platform</Badge>
           </div>
         </div>

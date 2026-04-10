@@ -1,32 +1,22 @@
-import { motion } from 'framer-motion';
-
-export function ZenLogo({ size = 40 }) {
+export function ZenLogo({ size = 30 }) {
+  const s = size / 30;
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-      className="relative flex items-center justify-center overflow-hidden rounded-xl bg-primary shadow-lg"
-      style={{ width: size, height: size, boxShadow: '0 4px 20px hsl(var(--accent) / 0.3)' }}
-    >
-      <svg width={size * 0.6} height={size * 0.6} viewBox="0 0 24 24" fill="none">
-        <motion.path
-          d="M4 5h16L4 19h16"
-          stroke="hsl(var(--accent))"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 1.5, ease: 'easeOut' }}
-          style={{ filter: 'drop-shadow(0 0 4px hsl(var(--accent) / 0.6))' }}
-        />
-        <motion.circle cx="20" cy="5" r="2" fill="hsl(var(--accent))"
-          animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 2.5, repeat: Infinity }} />
-        <motion.circle cx="4" cy="19" r="2" fill="hsl(var(--accent))"
-          animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 2, repeat: Infinity }} />
-      </svg>
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-transparent via-accent/10 to-transparent" />
-    </motion.div>
+    <svg width={36 * s} height={28 * s} viewBox="0 0 36 32" fill="none" style={{ display: 'block' }}>
+      <path
+        d="M4 8h20L4 24h20"
+        stroke="hsl(var(--foreground))"
+        strokeWidth="2.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <animate attributeName="stroke-dasharray" from="0 80" to="80 0" dur="1.8s" fill="freeze" />
+      </path>
+      <line x1="28" y1="4" x2="34" y2="4" stroke="hsl(var(--accent))" strokeWidth="2.8" strokeLinecap="round">
+        <animate attributeName="opacity" values="0;1" dur="0.4s" begin="1.6s" fill="freeze" />
+      </line>
+      <line x1="31" y1="1" x2="31" y2="7" stroke="hsl(var(--accent))" strokeWidth="2.8" strokeLinecap="round">
+        <animate attributeName="opacity" values="0;1" dur="0.4s" begin="1.6s" fill="freeze" />
+      </line>
+    </svg>
   );
 }
