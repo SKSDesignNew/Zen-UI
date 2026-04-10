@@ -1,18 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Cosmograph } from '@cosmograph/react';
+import { Graph } from '@cosmos.gl/graph';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, Loader2, Maximize2, Filter } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { Search, X, Loader2, Maximize2, Filter, Play, Pause } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
-  SCALE_DOMS, SCALE_DOM_COLORS, DOM_COUNTS_MAP, RULE_NAMES, TAL_FILES,
+  SCALE_DOMS, SCALE_DOM_COLORS, DOM_COUNTS_MAP,
   genScaleRules, genScaleEdges,
 } from '@/lib/scale-data';
 import { CRIT_COLORS } from '@/lib/rules';
 import { cn } from '@/lib/utils';
 
-// Convert hex to [r,g,b,a] in 0-1 range for Cosmograph
+// Convert hex color string to [r,g,b,a] in 0-1 range
 function hexToRgba(hex, alpha = 1) {
   const h = hex.replace('#', '');
   return [
@@ -23,133 +21,199 @@ function hexToRgba(hex, alpha = 1) {
   ];
 }
 
+const SIZE_BY_CRIT = { HIGH: 6, MEDIUM: 4, LOW: 2.5 };
+const GREY_COLOR = [0.1, 0.12, 0.18, 0.4];
+const SPACE_SIZE = 4096;
+
 export function ZG2Tab() {
-  const cosmographRef = useRef(null);
+  const containerRef = useRef(null);
+  const graphRef = useRef(null);
+  const dataRef = useRef(null); // { rules, edges, baseColors, sizes }
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState({ points: [], links: [] });
+  const [progress, setProgress] = useState('Generating rules…');
   const [searchTerm, setSearchTerm] = useState('');
   const [domFilter, setDomFilter] = useState('All');
   const [selected, setSelected] = useState(null);
+  const [isSimRunning, setIsSimRunning] = useState(true);
 
-  // Generate 100K rules + ~300K edges asynchronously so the UI stays responsive
+  // Generate data, build typed arrays, mount Graph instance
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    // Defer to next tick so the spinner can paint first
-    const id = setTimeout(() => {
+    let graph = null;
+
+    const init = async () => {
+      // Defer to next tick so the loader paints
+      await new Promise((r) => setTimeout(r, 50));
+      setProgress('Generating 100,000 rules…');
       const rules = genScaleRules();
+      if (cancelled) return;
+
+      await new Promise((r) => setTimeout(r, 50));
+      setProgress('Building dependency graph…');
       const edges = genScaleEdges(rules);
       if (cancelled) return;
-      // Cosmograph requires both an id column and a sequential integer index column.
+
+      await new Promise((r) => setTimeout(r, 50));
+      setProgress('Allocating GPU buffers…');
+
+      const N = rules.length;
+      // Initial random positions in a centered square
+      const positions = new Float32Array(N * 2);
+      const baseColors = new Float32Array(N * 4);
+      const sizes = new Float32Array(N);
+      const colorByDom = {};
+      for (const d of SCALE_DOMS) colorByDom[d] = hexToRgba(SCALE_DOM_COLORS[d], 1);
+
+      for (let i = 0; i < N; i++) {
+        // Random scatter — force simulation will organize
+        positions[i * 2] = (Math.random() - 0.5) * SPACE_SIZE * 0.6;
+        positions[i * 2 + 1] = (Math.random() - 0.5) * SPACE_SIZE * 0.6;
+        const c = colorByDom[rules[i].dom];
+        baseColors[i * 4] = c[0];
+        baseColors[i * 4 + 1] = c[1];
+        baseColors[i * 4 + 2] = c[2];
+        baseColors[i * 4 + 3] = c[3];
+        sizes[i] = SIZE_BY_CRIT[rules[i].crit];
+      }
+
+      // Build id→index map and links Float32Array (source0, target0, source1, target1, ...)
       const idToIndex = new Map();
-      const points = rules.map((r, i) => {
-        idToIndex.set(r.id, i);
-        return {
-          index: i,
-          id: r.id,
-          name: r.name,
-          dom: r.dom,
-          crit: r.crit,
-          file: r.file,
-          lines: r.lines,
-          type: r.type,
-        };
-      });
-      // Cosmograph wants link source/target as both string ids and numeric indices.
-      const links = [];
+      for (let i = 0; i < N; i++) idToIndex.set(rules[i].id, i);
+      const links = new Float32Array(edges.length * 2);
+      let validLinks = 0;
       for (let k = 0; k < edges.length; k++) {
         const s = idToIndex.get(edges[k].source);
         const t = idToIndex.get(edges[k].target);
         if (s !== undefined && t !== undefined) {
-          links.push({
-            source: edges[k].source,
-            target: edges[k].target,
-            sourceIndex: s,
-            targetIndex: t,
-          });
+          links[validLinks * 2] = s;
+          links[validLinks * 2 + 1] = t;
+          validLinks++;
         }
       }
-      setData({ points, links });
+      const trimmedLinks = links.slice(0, validLinks * 2);
+      if (cancelled) return;
+
+      setProgress('Initializing GPU…');
+      await new Promise((r) => setTimeout(r, 50));
+
+      if (!containerRef.current) return;
+
+      // Build the Cosmos graph
+      graph = new Graph(containerRef.current, {
+        backgroundColor: '#0a0e1a',
+        spaceSize: SPACE_SIZE,
+        pointSizeScale: 1,
+        renderHoveredPointRing: true,
+        hoveredPointRingColor: '#fbbf24',
+        focusedPointRingColor: '#fbbf24',
+        renderLinks: true,
+        linkColor: [1, 1, 1, 0.04],
+        linkWidth: 0.4,
+        linkArrows: false,
+        curvedLinks: false,
+        enableSimulation: true,
+        simulationGravity: 0.25,
+        simulationRepulsion: 1.0,
+        simulationLinkSpring: 1.0,
+        simulationLinkDistance: 3,
+        simulationFriction: 0.85,
+        simulationDecay: 5000,
+        showFPSMonitor: false,
+        scalePointsOnZoom: true,
+        onClick: (index) => {
+          if (index == null) {
+            setSelected(null);
+            return;
+          }
+          const rule = dataRef.current?.rules[index];
+          if (rule) setSelected(rule);
+        },
+        onSimulationStart: () => setIsSimRunning(true),
+        onSimulationEnd: () => setIsSimRunning(false),
+        onSimulationPause: () => setIsSimRunning(false),
+        onSimulationUnpause: () => setIsSimRunning(true),
+      });
+
+      graphRef.current = graph;
+      dataRef.current = { rules, edges, baseColors, sizes, idToIndex };
+
+      graph.setPointPositions(positions);
+      graph.setPointColors(baseColors);
+      graph.setPointSizes(sizes);
+      graph.setLinks(trimmedLinks);
+      graph.render();
+      graph.start();
+      // Fit view after layout starts
+      setTimeout(() => graph?.fitView?.(800), 600);
+
       setLoading(false);
-    }, 60);
-    return () => { cancelled = true; clearTimeout(id); };
+    };
+
+    init();
+
+    return () => {
+      cancelled = true;
+      try { graph?.destroy?.(); } catch {}
+      graphRef.current = null;
+      dataRef.current = null;
+    };
   }, []);
 
-  // Domain filter is applied via the colorByFn closure (no array rebuild needed)
-  const colorByFn = useMemo(
-    () => (dom) => {
-      if (domFilter !== 'All' && dom !== domFilter) return '#1a1f2e';
-      return SCALE_DOM_COLORS[dom] || '#94a3b8';
-    },
-    [domFilter]
-  );
+  // Apply domain filter by mutating point colors in place
+  useEffect(() => {
+    const g = graphRef.current;
+    const d = dataRef.current;
+    if (!g || !d) return;
+    const N = d.rules.length;
+    const colors = new Float32Array(N * 4);
+    if (domFilter === 'All') {
+      colors.set(d.baseColors);
+    } else {
+      for (let i = 0; i < N; i++) {
+        const inFilter = d.rules[i].dom === domFilter;
+        const src = inFilter ? d.baseColors : GREY_COLOR;
+        const off = inFilter ? i * 4 : 0;
+        colors[i * 4] = inFilter ? src[off] : src[0];
+        colors[i * 4 + 1] = inFilter ? src[off + 1] : src[1];
+        colors[i * 4 + 2] = inFilter ? src[off + 2] : src[2];
+        colors[i * 4 + 3] = inFilter ? src[off + 3] : src[3];
+      }
+    }
+    g.setPointColors(colors);
+    g.render();
+  }, [domFilter]);
 
-  const sizeByFn = useMemo(
-    () => (crit) => (crit === 'HIGH' ? 6 : crit === 'MEDIUM' ? 4 : 3),
-    []
-  );
-
-  // Search → focus the matching point
+  // Search → focus matching point
   const onSearch = (term) => {
     setSearchTerm(term);
-    if (!term || !cosmographRef.current) return;
-    const idx = data.points.findIndex(
-      (p) => p.id.toLowerCase() === term.toLowerCase() || p.name.toLowerCase().includes(term.toLowerCase())
-    );
-    if (idx >= 0) {
+    const g = graphRef.current;
+    const d = dataRef.current;
+    if (!term || !g || !d) return;
+    const t = term.toUpperCase();
+    let idx = d.idToIndex.get(t);
+    if (idx === undefined) {
+      const lower = term.toLowerCase();
+      idx = d.rules.findIndex((r) => r.name.toLowerCase().includes(lower));
+    }
+    if (idx !== undefined && idx >= 0) {
       try {
-        cosmographRef.current.focusPoint?.(idx);
-        cosmographRef.current.zoomToPointByIndex?.(idx, 800, 4, true);
+        g.zoomToPointByIndex?.(idx, 800, 6, true);
+        g.setFocusedPointByIndex?.(idx);
       } catch {}
     }
   };
 
-  const onPointClick = (index) => {
-    if (index == null) { setSelected(null); return; }
-    const p = data.points[index];
-    if (p) setSelected(p);
+  const togglePlay = () => {
+    const g = graphRef.current;
+    if (!g) return;
+    if (isSimRunning) g.pause();
+    else g.start();
   };
 
   return (
     <div className="relative h-[calc(100vh-120px)] w-full overflow-hidden bg-[#0a0e1a]">
-      {/* Cosmograph canvas */}
-      {!loading && (
-        <Cosmograph
-          ref={cosmographRef}
-          points={data.points}
-          links={data.links}
-          pointIdBy="id"
-          pointIndexBy="index"
-          pointColorBy="dom"
-          pointColorByFn={colorByFn}
-          pointLabelBy="id"
-          pointSizeBy="crit"
-          pointSizeByFn={sizeByFn}
-          linkSourceBy="source"
-          linkSourceIndexBy="sourceIndex"
-          linkTargetBy="target"
-          linkTargetIndexBy="targetIndex"
-          backgroundColor="#0a0e1a"
-          linkColor={[1, 1, 1, 0.06]}
-          linkWidth={0.4}
-          linkArrows={false}
-          enableSimulation={true}
-          simulationGravity={0.25}
-          simulationRepulsion={1.0}
-          simulationLinkSpring={1.0}
-          simulationLinkDistance={3}
-          simulationDecay={5000}
-          fitViewOnInit={true}
-          fitViewDelay={1000}
-          showFPSMonitor={false}
-          hoveredPointCursor="pointer"
-          renderHoveredPointRing={true}
-          hoveredPointRingColor="#fbbf24"
-          focusedPointRingColor="#fbbf24"
-          onClick={onPointClick}
-          style={{ width: '100%', height: '100%' }}
-        />
-      )}
+      {/* Cosmos canvas mount point */}
+      <div ref={containerRef} className="absolute inset-0" />
 
       {/* Loading overlay */}
       <AnimatePresence>
@@ -161,12 +225,8 @@ export function ZG2Tab() {
             className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#0a0e1a]"
           >
             <Loader2 className="h-10 w-10 animate-spin text-amber-400" />
-            <div className="mt-4 font-serif text-2xl font-bold text-white">
-              Generating 100,000 rules
-            </div>
-            <div className="mt-1 text-sm text-white/60">
-              Building dependency graph with ~300K edges…
-            </div>
+            <div className="mt-4 font-serif text-2xl font-bold text-white">{progress}</div>
+            <div className="mt-1 text-sm text-white/60">100,000 rules · 300,000 dependencies · GPU force simulation</div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -179,9 +239,7 @@ export function ZG2Tab() {
             <Badge variant="accent" className="text-[10px]">Full Call Graph</Badge>
           </div>
           <div className="mt-1 text-[10px] text-white/60">
-            {loading
-              ? 'Loading…'
-              : `${data.points.length.toLocaleString()} rules · ${data.links.length.toLocaleString()} dependencies · GPU force simulation`}
+            {loading ? 'Loading…' : '100,000 rules · 300,000 dependencies · GPU force simulation'}
           </div>
         </div>
       </div>
@@ -209,16 +267,17 @@ export function ZG2Tab() {
       <div className="pointer-events-none absolute right-4 top-4 z-10">
         <div className="pointer-events-auto flex flex-col gap-2">
           <button
-            onClick={() => cosmographRef.current?.fitView?.(800)}
+            onClick={() => graphRef.current?.fitView?.(800)}
             className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-black/50 px-3 py-1.5 text-[10px] font-semibold text-white/80 backdrop-blur-2xl hover:bg-white/10"
           >
             <Maximize2 className="h-3 w-3" /> Fit View
           </button>
           <button
-            onClick={() => cosmographRef.current?.start?.()}
+            onClick={togglePlay}
             className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-black/50 px-3 py-1.5 text-[10px] font-semibold text-white/80 backdrop-blur-2xl hover:bg-white/10"
           >
-            ▶ Restart Sim
+            {isSimRunning ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+            {isSimRunning ? 'Pause Sim' : 'Start Sim'}
           </button>
         </div>
       </div>
