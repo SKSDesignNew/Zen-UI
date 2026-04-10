@@ -8,6 +8,7 @@ import { PillarsTab } from '@/tabs/PillarsTab';
 import { UseCaseTab } from '@/tabs/UseCaseTab';
 import { InventoryTab } from '@/tabs/InventoryTab';
 import { GraphTab } from '@/tabs/GraphTab';
+import { ZG2Tab } from '@/tabs/ZG2Tab';
 import { LineageTab } from '@/tabs/LineageTab';
 import { EngineTab } from '@/tabs/EngineTab';
 import { SandboxTab } from '@/tabs/SandboxTab';
@@ -20,6 +21,7 @@ const VIEWS = {
   usecase: (props) => <UseCaseTab onContinue={() => props.setView('pillars')} />,
   inventory: InventoryTab,
   graph: GraphTab,
+  zg2: ZG2Tab,
   lineage: LineageTab,
   engine: EngineTab,
   sandbox: SandboxTab,
