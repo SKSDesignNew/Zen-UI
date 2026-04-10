@@ -1343,46 +1343,21 @@ export function LineageTab() {
   };
 
   return (
-    <div className="px-6 py-6">
+    <div className="mx-auto max-w-6xl px-6 py-10">
       {/* Title */}
-      <div className="mb-5">
-        <h1 className="font-serif text-3xl font-bold tracking-tight">Live Transaction Lineage</h1>
+      <div className="mb-6">
+        <h1 className="font-serif text-3xl font-bold tracking-tight">
+          Z+ — Deterministic, Linked, Traceable
+        </h1>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          Pick a scenario, run the flow, then click any gate to see the bidirectional
-          trace from source TAL to target Java with the immutable audit chain.
+          The governance layer for AI-generated code. Click any pillar below to see
+          the live proof — same input always yields the same output, every decision
+          links back to source, and every output forwards to an immutable audit chain.
         </p>
       </div>
 
-      {/* SECTION 1 — The Zen+ Promise */}
+      {/* The Zen+ Promise — D + L + T cards with click-to-open proofs */}
       <ZenPlusPromise />
-
-      {/* SECTION 2 — Horizontal Pipeline */}
-      <PipelineFlow
-        chain={chain}
-        flowStep={flowStep}
-        runAll={runAll}
-        step={stepOnce}
-        reset={reset}
-        onSelectGate={setSelected}
-        selectedId={selected?.id}
-      />
-
-      {/* SECTION 3 — Bidirectional Trace Chain */}
-      <AnimatePresence>
-        {selected && <TraceChainPanel key={selected.id} step={selected} />}
-      </AnimatePresence>
-
-      {!selected && (
-        <div className="rounded-xl border border-dashed bg-muted/20 p-6 text-center">
-          <div className="mb-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            Trace Chain
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Run the flow above, then click any completed gate to see its source TAL,
-            rule metadata, target Java, and audit chain.
-          </p>
-        </div>
-      )}
     </div>
   );
 }
