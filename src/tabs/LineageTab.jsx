@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Play, RotateCcw, X, Lock, Link2, ShieldCheck, Check, AlertTriangle,
-  CreditCard, Flag, Globe, Activity, ChevronRight, Hash,
+  Play, RotateCcw, X, Lock, Link2, ShieldCheck, Check, CheckCircle2, XCircle,
+  AlertTriangle, CreditCard, Flag, Globe, Activity, ChevronRight, Hash,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -190,20 +190,148 @@ function buildChain(txn) {
 }
 
 // ─── Section 1: The Zen+ Promise ──────────────────────────────────────────
+// ─── D+L+T proof data (real TAL from PMTAPPR.tal / PMTEFT.tal) ───────────
+const DLT_PROOFS = {
+  D: {
+    color: '#fbbf24',
+    title: 'Run It Twice. Watch.',
+    talSource: `INT PROC CHECK^PAYMENT^AUTHORITY(REQ, AUTH^REC);
+  CASE REQ.PAYMENT^TYPE OF
+  BEGIN
+    PMT^TYPE^MEDICAL    -> LIMIT := AUTH^REC.MEDICAL^LIMIT;
+    PMT^TYPE^INDEMNITY  -> LIMIT := AUTH^REC.INDEMNITY^LIMIT;
+    PMT^TYPE^LEGAL      -> LIMIT := AUTH^REC.LEGAL^LIMIT;
+    PMT^TYPE^SETTLEMENT -> LIMIT := AUTH^REC.SETTLEMENT^LIMIT;
+    OTHERWISE           -> LIMIT := AUTH^REC.SINGLE^PMT^LIMIT;
+  END;
+  IF REQ.PAYMENT^AMOUNT <= LIMIT AND
+     REQ.PAYMENT^AMOUNT <= AUTH^REC.SINGLE^PMT^LIMIT THEN
+    RETURN 1
+  ELSE RETURN 0;`,
+    llmRun1: `public boolean check(PaymentReq req, AuthRecord auth) {
+  BigDecimal limit;
+  switch (req.getType()) {
+    case MEDICAL:    limit = auth.getMedicalLimit();    break;
+    case INDEMNITY:  limit = auth.getIndemnityLimit();  break;
+    case LEGAL:      limit = auth.getLegalLimit();      break;
+    case SETTLEMENT: limit = auth.getSettlementLimit(); break;
+    default:         limit = auth.getSinglePmtLimit();
+  }
+  return req.getAmount().compareTo(limit) <= 0
+      && req.getAmount().compareTo(auth.getSinglePmtLimit()) <= 0;
+}`,
+    llmRun2: `public boolean checkAuth(Request request, AuthorityRec rec) {
+  BigDecimal limit = getApplicableLimit(request, rec);
+  return request.getAmount().compareTo(limit) <= 0;
+}
+// ⚠ MISSING: AND check against SINGLE^PMT^LIMIT was dropped`,
+    llmDiffs: [
+      { label: 'Method name',    run1: 'check',                   run2: 'checkAuth' },
+      { label: 'Param types',    run1: 'PaymentReq, AuthRecord',  run2: 'Request, AuthorityRec' },
+      { label: 'Lines of code',  run1: '14',                       run2: '8' },
+      { label: 'AND check',      run1: '✓ Present',                run2: '✗ MISSING' },
+    ],
+    zenRun: `public boolean checkPaymentAuthority(
+    PaymentApprovalReq req, PaymentAuthRec auth) {
+  BigDecimal limit;
+  switch (req.getPaymentType()) {
+    case MEDICAL:    limit = auth.getMedicalLimit();    break;
+    case INDEMNITY:  limit = auth.getIndemnityLimit();  break;
+    case LEGAL:      limit = auth.getLegalLimit();      break;
+    case SETTLEMENT: limit = auth.getSettlementLimit(); break;
+    default:         limit = auth.getSinglePmtLimit();
+  }
+  return req.getPaymentAmount().compareTo(limit) <= 0
+      && req.getPaymentAmount().compareTo(
+         auth.getSinglePmtLimit()) <= 0;
+}`,
+    point:
+      'The LLM produced different method names, different parameter types, and Run 2 dropped a critical business rule (the AND check against SINGLE^PMT^LIMIT). ZenPlus produced identical output both times because it parses the AST, not the vibes.',
+  },
+  L: {
+    color: '#10b981',
+    title: 'Ask Where It Came From.',
+    javaCode: `public boolean validateRoutingNumber(String rtn) {
+  int[] d = rtn.chars().map(c -> c - '0').toArray();
+  int checksum = 3 * (d[0] + d[3] + d[6])
+               + 7 * (d[1] + d[4] + d[7])
+               +     (d[2] + d[5] + d[8]);
+  return checksum % 10 == 0;
+}`,
+    llmAnswer:
+      '"This method validates ABA routing numbers using the standard checksum algorithm. It was likely generated from a legacy validation routine."',
+    llmMissing: [
+      'Source file',
+      'Line number',
+      'Original routine',
+      'Audit hash',
+      'Conversion date',
+    ],
+    zenMeta: [
+      { label: 'Source',      value: 'PMTEFT.tal' },
+      { label: 'Lines',       value: '42–58' },
+      { label: 'Routine',     value: 'VALIDATE^ROUTING^NUMBER' },
+      { label: 'Rule',        value: 'R-PMT-007' },
+      { label: 'Domain',      value: 'Settlement' },
+      { label: 'Regulatory',  value: 'NACHA Operating Rules' },
+      { label: 'Called by',   value: 'ADD^PAYMENT^TO^BATCH' },
+      { label: 'SHA',         value: '7c4a2e1f' },
+      { label: 'Converted',   value: '2025-03-15T09:41:22Z' },
+      { label: 'Approved',    value: 'compliance-review-agent' },
+    ],
+    talSource: `INT PROC VALIDATE^ROUTING^NUMBER(RTN);
+  STRING .RTN[0:8];
+BEGIN
+  INT D1,D2,D3,D4,D5,D6,D7,D8,D9;
+  INT CHECKSUM;
+  D1:=RTN[0]-"0"; D2:=RTN[1]-"0"; D3:=RTN[2]-"0";
+  D4:=RTN[3]-"0"; D5:=RTN[4]-"0"; D6:=RTN[5]-"0";
+  D7:=RTN[6]-"0"; D8:=RTN[7]-"0"; D9:=RTN[8]-"0";
+  CHECKSUM := 3*(D1+D4+D7) + 7*(D2+D5+D8) + (D3+D6+D9);
+  IF CHECKSUM - ((CHECKSUM/10)*10) = 0 THEN RETURN 1;
+  RETURN 0;
+END;`,
+    point:
+      "When a regulator asks 'where did this code come from?', the LLM says 'likely from a legacy routine.' ZenPlus says 'PMTEFT.tal, line 42, VALIDATE^ROUTING^NUMBER, SHA 7c4a2e1f.' One is a guess. The other is evidence.",
+  },
+  T: {
+    color: '#3b82f6',
+    title: 'Why Was This Payment Held?',
+    scenario: '$12,500 payment to Dr. Smith for claim WC-2024-00847',
+    llmAudit:
+      "I'll process the payment. The amount of $12,500 appears to be within normal parameters. However, I notice there may be some lien considerations. Let me check… Based on the available information, this payment should be held for review due to potential lien obligations.",
+    steps: [
+      { id: 'R-PMT-001', name: 'Auth Check', result: 'pass', detail: 'User JSMITH has $25K medical authority' },
+      { id: 'R-PMT-002', name: 'Duplicate',  result: 'pass', detail: 'No matching claim+provider+date in 30-day window' },
+      { id: 'R-PMT-003', name: 'Bill Review', result: 'pass', detail: 'MBR approved, allowed amount $12,500' },
+      { id: 'R-PMT-004', name: 'Indemnity',  result: 'skip', detail: 'N/A — medical payment, not indemnity' },
+      { id: 'R-PMT-005', name: 'Lien Check', result: 'hold', detail: 'IRS lien found: $3,200 at 25.6% of gross. Net: $9,300' },
+    ],
+    lienDetail: {
+      type: 'IRS (LIEN^TYPE = 2)',
+      amount: '$3,200',
+      pct: '25.6%',
+      net: '$9,300',
+      source: 'PMTAPPR.TAL:CHECK^LIENS line 180',
+    },
+    hashes: ['a3f8c2', '7b2d4f', 'c8e1a3', 'd4e9f1', '2b7c8a'],
+    badges: ['Replayable', 'Immutable', 'Auditable', 'Deterministic'],
+    point:
+      "The LLM gives you a conversation. ZenPlus gives you a chain of evidence: 5 rules evaluated in sequence, each with source file, line number, and cryptographic hash. The chain is immutable — if anyone changes one link, the entire chain invalidates. That's not a feature. That's a legal requirement.",
+  },
+};
+
 function ZenPlusPromise() {
+  const [activePillar, setActivePillar] = useState(null);
+
   const pillars = [
     {
-      Icon: Lock,
-      title: 'D+',
-      subtitle: 'DETERMINISTIC',
+      key: 'D', Icon: Lock, title: 'D+', subtitle: 'DETERMINISTIC',
       tagline: 'Same input = Same output. Every time.',
       proof: (
         <div className="flex items-center gap-1.5">
           {[1, 2, 3].map((n) => (
-            <div
-              key={n}
-              className="flex items-center gap-1 rounded border border-emerald-400/40 bg-emerald-400/10 px-2 py-0.5 font-mono text-[10px] text-emerald-300"
-            >
+            <div key={n} className="flex items-center gap-1 rounded border border-emerald-400/40 bg-emerald-400/10 px-2 py-0.5 font-mono text-[10px] text-emerald-300">
               <Check className="h-2.5 w-2.5" />
               Run {n}
             </div>
@@ -213,9 +341,7 @@ function ZenPlusPromise() {
       llm: 'LLM: 3 runs, 3 different outputs',
     },
     {
-      Icon: Link2,
-      title: 'L+',
-      subtitle: 'LINEAGE',
+      key: 'L', Icon: Link2, title: 'L+', subtitle: 'LINEAGE',
       tagline: 'Every decision links back to source code.',
       proof: (
         <div className="flex items-center gap-1.5 font-mono text-[10px] text-white/85">
@@ -229,9 +355,7 @@ function ZenPlusPromise() {
       llm: 'LLM: "Based on the general pattern…"',
     },
     {
-      Icon: ShieldCheck,
-      title: 'T+',
-      subtitle: 'TRACEABLE',
+      key: 'T', Icon: ShieldCheck, title: 'T+', subtitle: 'TRACEABLE',
       tagline: 'Every output links forward to audit.',
       proof: (
         <div className="flex items-center gap-2 font-mono text-[10px] text-white/85">
@@ -261,9 +385,17 @@ function ZenPlusPromise() {
             Opus 4.6 is the engine. ZenPlus is the chassis, the brakes, and the audit trail.
           </p>
         </div>
+        {activePillar && (
+          <button
+            onClick={() => setActivePillar(null)}
+            className="text-[10px] font-semibold uppercase tracking-widest text-white/50 transition-colors hover:text-white"
+          >
+            close ✕
+          </button>
+        )}
       </div>
 
-      {/* Three pillars connected by SVG dashed lines */}
+      {/* Three pillar cards */}
       <div className="relative">
         <svg
           className="pointer-events-none absolute inset-0 h-full w-full"
@@ -287,17 +419,35 @@ function ZenPlusPromise() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {pillars.map((p) => {
             const Icon = p.Icon;
+            const isActive = activePillar === p.key;
+            const proofColor = DLT_PROOFS[p.key].color;
             return (
-              <div
-                key={p.title}
-                className="relative rounded-xl border border-white/15 bg-white/[0.04] p-5 backdrop-blur-sm"
+              <button
+                key={p.key}
+                onClick={() => setActivePillar(isActive ? null : p.key)}
+                className={cn(
+                  'group relative rounded-xl border-2 p-5 text-left backdrop-blur-sm transition-all duration-300',
+                  isActive
+                    ? 'scale-[1.02] bg-white/[0.08]'
+                    : 'border-white/15 bg-white/[0.04] hover:scale-[1.02] hover:bg-white/[0.08]'
+                )}
+                style={
+                  isActive
+                    ? { borderColor: proofColor, boxShadow: `0 0 24px ${proofColor}40` }
+                    : undefined
+                }
               >
                 <div className="mb-3 flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-400/15 text-amber-300">
+                  <div
+                    className="flex h-10 w-10 items-center justify-center rounded-lg transition-colors"
+                    style={{ background: `${proofColor}26`, color: proofColor }}
+                  >
                     <Icon className="h-5 w-5" />
                   </div>
                   <div>
-                    <div className="font-serif text-2xl font-bold text-amber-300">{p.title}</div>
+                    <div className="font-serif text-2xl font-bold" style={{ color: proofColor }}>
+                      {p.title}
+                    </div>
                     <div className="text-[10px] font-bold uppercase tracking-widest text-white/60">
                       {p.subtitle}
                     </div>
@@ -307,12 +457,54 @@ function ZenPlusPromise() {
                 <div className="mb-3 rounded-lg border border-white/10 bg-black/30 p-2.5">
                   {p.proof}
                 </div>
-                <div className="text-[10px] italic text-white/40">{p.llm}</div>
-              </div>
+                <div className="mb-2 text-[10px] italic text-white/40">{p.llm}</div>
+
+                {/* Hover hint + active chevron */}
+                <div
+                  className={cn(
+                    'flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest transition-opacity',
+                    isActive
+                      ? 'opacity-100'
+                      : 'opacity-0 group-hover:opacity-100'
+                  )}
+                  style={{ color: proofColor }}
+                >
+                  {isActive ? '✓ proof open below' : 'click to see proof →'}
+                </div>
+                {isActive && (
+                  <div
+                    className="absolute -bottom-3 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 50%, hsl(var(--card)) 50%)',
+                      borderRight: `2px solid ${proofColor}`,
+                      borderBottom: `2px solid ${proofColor}`,
+                    }}
+                  />
+                )}
+              </button>
             );
           })}
         </div>
       </div>
+
+      {/* Proof panel slides open below */}
+      <AnimatePresence>
+        {activePillar && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+            className="overflow-hidden"
+          >
+            <div className="mt-6">
+              {activePillar === 'D' && <DProof />}
+              {activePillar === 'L' && <LProof />}
+              {activePillar === 'T' && <TProof />}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <style>{`
         @keyframes dashFlow {
@@ -320,6 +512,345 @@ function ZenPlusPromise() {
         }
       `}</style>
     </section>
+  );
+}
+
+// ─── D+ Proof: Run It Twice. Watch. ───────────────────────────────────────
+function DProof() {
+  const d = DLT_PROOFS.D;
+  return (
+    <div
+      className="rounded-2xl border-l-4 bg-black/40 p-5 backdrop-blur-sm"
+      style={{ borderLeftColor: d.color }}
+    >
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: d.color }}>
+            D+ Proof
+          </div>
+          <h3 className="font-serif text-lg font-bold text-white">{d.title}</h3>
+        </div>
+      </div>
+
+      <div className="mb-4">
+        <div className="mb-1 text-[9px] font-bold uppercase tracking-widest text-white/60">
+          Source TAL · PMTAPPR.tal · CHECK^PAYMENT^AUTHORITY (never changes)
+        </div>
+        <pre className="overflow-auto rounded-lg border border-white/15 bg-black/60 p-3 font-mono text-[10px] leading-snug text-white/85">
+          <code>{d.talSource}</code>
+        </pre>
+      </div>
+
+      {/* LLM runs */}
+      <div className="mb-3">
+        <div className="mb-2 flex items-center gap-2">
+          <XCircle className="h-3.5 w-3.5 text-red-400" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-red-400">
+            LLM: same input → different output
+          </span>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <RunCard kind="bad" label="LLM Run 1">
+            <pre className="font-mono text-[10px] leading-snug">{d.llmRun1}</pre>
+          </RunCard>
+          <RunCard kind="bad" label="LLM Run 2">
+            <pre className="font-mono text-[10px] leading-snug">{d.llmRun2}</pre>
+          </RunCard>
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-2 text-[10px]">
+          {d.llmDiffs.map((diff) => (
+            <div
+              key={diff.label}
+              className="rounded border border-red-500/30 bg-red-500/5 px-2 py-1"
+            >
+              <span className="text-red-300/70">{diff.label}: </span>
+              <span className="font-mono text-red-300">{diff.run1}</span>
+              <span className="text-red-300/40"> ≠ </span>
+              <span className="font-mono text-red-300">{diff.run2}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ZenPlus runs */}
+      <div className="mb-3">
+        <div className="mb-2 flex items-center gap-2">
+          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">
+            ZenPlus: same input → identical output, every run
+          </span>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <RunCard kind="good" label="ZenPlus Run 1">
+            <pre className="font-mono text-[10px] leading-snug">{d.zenRun}</pre>
+          </RunCard>
+          <RunCard kind="good" label="ZenPlus Run 2">
+            <pre className="font-mono text-[10px] leading-snug">{d.zenRun}</pre>
+          </RunCard>
+        </div>
+        <div className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-[11px] font-bold text-emerald-300">
+          <Check className="h-3.5 w-3.5" />
+          IDENTICAL · character-for-character · both AND-checks preserved
+        </div>
+      </div>
+
+      <ThePoint color={d.color}>{d.point}</ThePoint>
+    </div>
+  );
+}
+
+// ─── L+ Proof: Ask Where It Came From. ────────────────────────────────────
+function LProof() {
+  const l = DLT_PROOFS.L;
+  return (
+    <div
+      className="rounded-2xl border-l-4 bg-black/40 p-5 backdrop-blur-sm"
+      style={{ borderLeftColor: l.color }}
+    >
+      <div className="mb-3">
+        <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: l.color }}>
+          L+ Proof
+        </div>
+        <h3 className="font-serif text-lg font-bold text-white">{l.title}</h3>
+        <p className="mt-1 text-xs text-white/60">
+          This Java method exists in production. Where did it come from?
+        </p>
+      </div>
+
+      <pre className="mb-4 overflow-auto rounded-lg border border-white/15 bg-black/60 p-3 font-mono text-[10px] leading-snug text-white/85">
+        <code>{l.javaCode}</code>
+      </pre>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {/* LLM */}
+        <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <XCircle className="h-3.5 w-3.5 text-red-400" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-red-400">
+              LLM: where did this come from?
+            </span>
+          </div>
+          <p className="mb-3 rounded border border-red-500/20 bg-black/30 p-2 text-[11px] italic leading-relaxed text-white/70">
+            🤖 {l.llmAnswer}
+          </p>
+          <div className="space-y-1">
+            {l.llmMissing.map((m) => (
+              <div key={m} className="flex items-center gap-2 text-[10px] text-red-300">
+                <XCircle className="h-3 w-3 flex-shrink-0" />
+                <span>{m}: </span>
+                <span className="font-mono italic text-red-300/70">unknown</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ZenPlus */}
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">
+              ZenPlus: where did this come from?
+            </span>
+          </div>
+          <div className="mb-3 space-y-1">
+            {l.zenMeta.map((m) => (
+              <div key={m.label} className="flex items-center gap-2 text-[10px]">
+                <CheckCircle2 className="h-3 w-3 flex-shrink-0 text-emerald-400" />
+                <span className="w-20 text-emerald-300/70">{m.label}</span>
+                <span className="font-mono text-emerald-200">{m.value}</span>
+              </div>
+            ))}
+          </div>
+          <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-400">
+            Original TAL · embedded
+          </div>
+          <pre className="mt-1 overflow-auto rounded border border-emerald-500/20 bg-black/40 p-2 font-mono text-[9px] leading-snug text-emerald-100/85">
+            <code>{l.talSource}</code>
+          </pre>
+        </div>
+      </div>
+
+      <ThePoint color={l.color}>{l.point}</ThePoint>
+    </div>
+  );
+}
+
+// ─── T+ Proof: Why Was This Payment Held? ────────────────────────────────
+function TProof() {
+  const t = DLT_PROOFS.T;
+  const stepColor = (r) =>
+    r === 'pass' ? '#10b981' : r === 'hold' ? '#f59e0b' : r === 'skip' ? '#94a3b8' : '#ef4444';
+  return (
+    <div
+      className="rounded-2xl border-l-4 bg-black/40 p-5 backdrop-blur-sm"
+      style={{ borderLeftColor: t.color }}
+    >
+      <div className="mb-3">
+        <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: t.color }}>
+          T+ Proof
+        </div>
+        <h3 className="font-serif text-lg font-bold text-white">{t.title}</h3>
+        <p className="mt-1 text-xs text-white/60">{t.scenario} was HELD. Why?</p>
+      </div>
+
+      {/* LLM audit */}
+      <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/5 p-4">
+        <div className="mb-2 flex items-center gap-2">
+          <XCircle className="h-3.5 w-3.5 text-red-400" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-red-400">
+            LLM Audit Trail
+          </span>
+        </div>
+        <div className="rounded border border-red-500/20 bg-black/30 p-3 font-mono text-[10px] italic leading-relaxed text-white/65">
+          <span className="text-white/40">User: </span>
+          Process payment for claim WC-2024-00847
+          <br />
+          <span className="text-white/40">Assistant: </span>
+          {t.llmAudit}
+        </div>
+        <div className="mt-2 space-y-1">
+          {[
+            'Is this auditable? Can you prove it wasn\'t edited?',
+            'Can you replay this decision with different inputs?',
+            'Will this produce the same result tomorrow?',
+          ].map((q, i) => (
+            <div key={i} className="flex items-start gap-2 text-[10px] text-red-300">
+              <AlertTriangle className="mt-0.5 h-3 w-3 flex-shrink-0" />
+              <span>{q}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ZenPlus audit chain */}
+      <div className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">
+            ZenPlus Audit Chain — 5 rules in sequence
+          </span>
+        </div>
+
+        {/* Pipeline of 5 steps */}
+        <div className="mb-3 grid grid-cols-5 gap-1.5">
+          {t.steps.map((s, i) => {
+            const c = stepColor(s.result);
+            return (
+              <motion.div
+                key={s.id}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                className="rounded border bg-black/40 p-2 text-center"
+                style={{ borderColor: `${c}80` }}
+              >
+                <div className="font-mono text-[8px] text-white/50">{s.id}</div>
+                <div className="text-[10px] font-bold text-white">{s.name}</div>
+                <div
+                  className="mt-1 text-[9px] font-bold uppercase"
+                  style={{ color: c }}
+                >
+                  {s.result === 'pass' && '✓ pass'}
+                  {s.result === 'hold' && '⚠ hold'}
+                  {s.result === 'skip' && '— skip'}
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* Lien detail */}
+        <div className="mb-3 rounded border border-amber-500/30 bg-amber-500/5 p-2 text-[10px]">
+          <div className="mb-1 flex items-center gap-2 font-bold text-amber-300">
+            <AlertTriangle className="h-3 w-3" />
+            R-PMT-005: Lien found
+          </div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 font-mono text-amber-100/80">
+            <span>Type: {t.lienDetail.type}</span>
+            <span>Amount: {t.lienDetail.amount}</span>
+            <span>Deduction: {t.lienDetail.pct}</span>
+            <span>Net payment: {t.lienDetail.net}</span>
+            <span className="col-span-2 text-amber-300/60">Source: {t.lienDetail.source}</span>
+          </div>
+        </div>
+
+        {/* Hash chain */}
+        <div className="mb-3">
+          <div className="mb-1 text-[9px] font-bold uppercase tracking-widest text-emerald-400">
+            Cryptographic Hash Chain
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {t.hashes.map((h, i) => (
+              <div key={i} className="flex items-center gap-1.5">
+                <div className="rounded border border-emerald-500/30 bg-black/40 px-2 py-1 font-mono text-[10px] text-emerald-300">
+                  [{h}]
+                </div>
+                {i < t.hashes.length - 1 && (
+                  <ChevronRight className="h-3 w-3 text-emerald-500/60" />
+                )}
+              </div>
+            ))}
+          </div>
+          <p className="mt-1.5 text-[9px] italic text-white/50">
+            Each hash includes the previous. Tamper any link → entire chain invalidates.
+          </p>
+        </div>
+
+        {/* Badges */}
+        <div className="flex flex-wrap gap-1.5">
+          {t.badges.map((b) => (
+            <span
+              key={b}
+              className="flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-emerald-300"
+            >
+              <Check className="h-2.5 w-2.5" />
+              {b}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <ThePoint color={t.color}>{t.point}</ThePoint>
+    </div>
+  );
+}
+
+// ─── Shared sub-components ────────────────────────────────────────────────
+function RunCard({ kind, label, children }) {
+  const isBad = kind === 'bad';
+  return (
+    <div
+      className={cn(
+        'rounded-lg border p-3',
+        isBad ? 'border-red-500/30 bg-red-500/5' : 'border-emerald-500/30 bg-emerald-500/5'
+      )}
+    >
+      <div
+        className={cn(
+          'mb-1 text-[9px] font-bold uppercase tracking-widest',
+          isBad ? 'text-red-400' : 'text-emerald-400'
+        )}
+      >
+        {label}
+      </div>
+      <div className={cn('overflow-auto', isBad ? 'text-red-100/85' : 'text-emerald-100/85')}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ThePoint({ color, children }) {
+  return (
+    <div
+      className="mt-4 rounded-lg border-l-4 bg-white/[0.04] p-3"
+      style={{ borderLeftColor: color }}
+    >
+      <div className="mb-1 text-[9px] font-bold uppercase tracking-widest" style={{ color }}>
+        The Point
+      </div>
+      <p className="text-xs leading-relaxed text-white/85">{children}</p>
+    </div>
   );
 }
 
