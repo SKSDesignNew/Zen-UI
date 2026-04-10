@@ -48,21 +48,20 @@ export function Layout({ view, setView, children }) {
         </div>
       </header>
 
-      {/* Nav tabs — pill style with active glow */}
-      <nav className="tab-nav flex items-center gap-1 overflow-x-auto border-b bg-card/60 px-5 py-2 backdrop-blur-lg">
-        {NAV_ITEMS.map(({ k, label, Icon }, i) => {
+      {/* Nav tabs — thick underline with gradient bleed */}
+      <nav className="tab-nav flex items-center overflow-x-auto border-b-2 border-border/30 bg-card px-5 backdrop-blur-lg">
+        {NAV_ITEMS.map(({ k, label, Icon }) => {
           const active = view === k;
-          // Group separators: after engine (problem), after sandbox (solution), after zresults (proof)
           const showDivider = k === 'sandbox' || k === 'zresults';
           return (
             <div key={k} className="flex items-center">
               <button
                 onClick={() => setView(k)}
                 className={cn(
-                  'group relative flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-3.5 py-2 text-[11.5px] transition-all duration-200',
+                  'group -mb-[2px] flex items-center gap-1.5 whitespace-nowrap border-b-[3px] px-4 py-3 text-xs transition-all duration-200',
                   active
-                    ? 'border-accent/40 bg-accent/10 font-bold text-accent shadow-[0_0_12px_hsl(var(--accent)/0.15)]'
-                    : 'border-transparent font-medium text-muted-foreground hover:border-border hover:bg-border/30 hover:text-foreground'
+                    ? 'border-accent bg-gradient-to-t from-accent/[0.06] to-transparent font-semibold text-accent'
+                    : 'border-transparent font-normal text-muted-foreground hover:border-border hover:bg-gradient-to-t hover:from-border/10 hover:to-transparent hover:text-foreground'
                 )}
               >
                 <Icon
@@ -74,7 +73,7 @@ export function Layout({ view, setView, children }) {
                 <span>{label}</span>
               </button>
               {showDivider && (
-                <div className="mx-1 h-4 w-px shrink-0 self-center bg-border" />
+                <div className="mx-1.5 h-5 w-px shrink-0 self-center bg-border/50" />
               )}
             </div>
           );
