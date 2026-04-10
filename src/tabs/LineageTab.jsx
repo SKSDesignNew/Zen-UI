@@ -1,19 +1,16 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import ReactFlow, {
-  Background, BackgroundVariant, Controls, MarkerType, useEdgesState, useNodesState,
-} from 'reactflow';
-import 'reactflow/dist/style.css';
-import { motion } from 'framer-motion';
-import { Play, RotateCcw, X, ChevronRight } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Play, RotateCcw, X } from 'lucide-react';
+import { Scene } from '@/components/three/Scene';
+import { GlassNode } from '@/components/three/GlassNode';
+import { Edge } from '@/components/three/Edge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { CodeBlock } from '@/components/ui/code-block';
-import { cn } from '@/lib/utils';
 
 const ST_COLORS = {
-  pass: '#059669', flag: '#d97706', fail: '#dc2626', info: '#2563eb', critical: '#991b1b',
+  pass: '#10b981', flag: '#f59e0b', fail: '#ef4444', info: '#3b82f6', critical: '#991b1b',
 };
 const ST_LABELS = {
   pass: 'PASS', flag: 'FLAGGED', fail: 'DECLINED', info: 'APPLIED', critical: 'BLOCKED',
@@ -35,146 +32,60 @@ function buildChain(txn) {
   const statusOk = txn.status === 'ACTIVE';
   const creditOk = txn.balance + amt <= txn.limit;
 
-  chain.push({
-    id: 'R001', rule: 'PAN Format Check', file: 'PANVALID.TAL:12–38',
-    action: txn.pan.length === 16 || txn.pan.length === 19
-      ? `PAN ${txn.pan.slice(0, 6)}*** validated as ${txn.pan.length}-digit`
-      : `PAN length ${txn.pan.length} invalid`,
+  chain.push({ id: 'R001', rule: 'PAN Format Check', file: 'PANVALID.TAL:12–38',
+    action: txn.pan.length === 16 || txn.pan.length === 19 ? `PAN ${txn.pan.slice(0, 6)}*** validated` : `Invalid length ${txn.pan.length}`,
     st: txn.pan.length === 16 || txn.pan.length === 19 ? 'pass' : 'fail',
-    tal: 'IF PAN^LENGTH <> 16 AND PAN^LENGTH <> 19 THEN\n  CALL SET^ERROR(ERR^CODE := "14")',
-    java: 'if (pan.length() != 16 && pan.length() != 19) {\n  setError("14");\n  throw new InputRejectedException();\n}',
-  });
+    tal: 'IF PAN^LENGTH <> 16 AND PAN^LENGTH <> 19 THEN\n  CALL SET^ERROR("14")',
+    java: 'if (pan.length() != 16 && pan.length() != 19)\n  throw new InputRejectedException();' });
   if (chain[chain.length - 1].st === 'fail') return chain;
 
-  chain.push({
-    id: 'R002', rule: 'Luhn Checksum', file: 'PANVALID.TAL:42–78',
+  chain.push({ id: 'R002', rule: 'Luhn Checksum', file: 'PANVALID.TAL:42–78',
     action: 'Mod-10 checksum passed', st: 'pass',
-    tal: 'SUM := 0;\nWHILE I >= 0 DO\n  D := PAN[I] * 2;\nIF SUM MOD 10 <> 0 THEN DECLINE("14")',
-    java: 'int sum = ...;\nif (sum%10!=0) decline("14");',
-  });
-  chain.push({
-    id: 'R003', rule: 'BIN Range Lookup', file: 'AUTHPROC.TAL:45–89',
-    action: `BIN ${txn.pan.slice(0, 6)} matched — Issuer: VISA-${txn.country}`, st: 'pass',
-    tal: 'SCAN BIN^TABLE WHILE BIN^ENTRY.STATUS = "A"',
-    java: 'binTable.stream().filter(BinEntry::isActive)...',
-  });
-  chain.push({
-    id: 'R004', rule: 'Card Status Check', file: 'AUTHPROC.TAL:142–178',
-    action: statusOk ? `Status: ${txn.status} — proceed` : `Status: ${txn.status} — DECLINED 05`,
+    tal: 'IF SUM MOD 10 <> 0 THEN DECLINE("14")', java: 'if (sum%10!=0) decline("14");' });
+  chain.push({ id: 'R003', rule: 'BIN Lookup', file: 'AUTHPROC.TAL:45–89',
+    action: `BIN ${txn.pan.slice(0, 6)} → VISA-${txn.country}`, st: 'pass',
+    tal: 'SCAN BIN^TABLE WHILE STATUS = "A"', java: 'binTable.stream().filter(...).findFirst();' });
+  chain.push({ id: 'R004', rule: 'Card Status', file: 'AUTHPROC.TAL:142–178',
+    action: statusOk ? `${txn.status} — proceed` : `${txn.status} — DECLINED 05`,
     st: statusOk ? 'pass' : 'fail',
-    tal: 'IF CARD^STATUS <> "ACTIVE" THEN DECLINE("05")',
-    java: 'if (!card.getStatus().equals(ACTIVE)) decline("05");',
-  });
+    tal: 'IF STATUS <> "ACTIVE" THEN DECLINE("05")', java: 'if (!ACTIVE.equals(card.getStatus())) decline("05");' });
   if (!statusOk) return chain;
 
-  chain.push({
-    id: 'R005', rule: 'Expiry Validation', file: 'AUTHPROC.TAL:92–110',
-    action: expOk ? `Expiry ${txn.expiry} valid` : `EXPIRED — code 54`,
+  chain.push({ id: 'R005', rule: 'Expiry', file: 'AUTHPROC.TAL:92–110',
+    action: expOk ? `${txn.expiry} valid` : 'EXPIRED — code 54',
     st: expOk ? 'pass' : 'fail',
-    tal: 'IF EXP^DATE < CURRENT^DATE THEN DECLINE("54")',
-    java: 'if (card.getExpiryDate().isBefore(now())) decline("54");',
-  });
+    tal: 'IF EXP^DATE < CURRENT^DATE THEN DECLINE("54")', java: 'if (exp.isBefore(now())) decline("54");' });
   if (!expOk) return chain;
 
-  chain.push({
-    id: 'R006', rule: 'Velocity Limit', file: 'FRAUDCHK.TAL:201–267',
-    action: velOk ? `Velocity ${v}/15 — within limits` : `Velocity ${v}/15 EXCEEDED → manual review`,
+  chain.push({ id: 'R006', rule: 'Velocity Limit', file: 'FRAUDCHK.TAL:201–267',
+    action: velOk ? `${v}/15 — within limits` : `${v}/15 EXCEEDED → review`,
     st: velOk ? 'pass' : 'flag',
-    tal: 'IF TXN^COUNT^24HR > VELOCITY^LIMIT THEN\n  CALL FLAG^SUSPICIOUS("HIGH")',
-    java: 'if (txnCount24Hr > velocityLimit) {\n  flagSuspicious(HIGH);\n}',
-  });
-  chain.push({
-    id: 'R007', rule: 'Geo-Location Risk', file: 'FRAUDCHK.TAL:310–358',
-    action: txn.country !== 'US' ? `Cross-border (${txn.country}) — geo-risk +40` : 'Domestic — no geo-risk',
+    tal: 'IF TXN^COUNT > LIMIT THEN FLAG^SUSPICIOUS("HIGH")',
+    java: 'if (count > limit) flagSuspicious(HIGH);' });
+  chain.push({ id: 'R007', rule: 'Geo-Risk', file: 'FRAUDCHK.TAL:310–358',
+    action: txn.country !== 'US' ? `Cross-border (${txn.country}) +40` : 'Domestic',
     st: txn.country !== 'US' ? 'info' : 'pass',
-    tal: 'IF DISTANCE > IMPOSSIBLE^TRAVEL THEN GEO^RISK := GEO^RISK + 40',
-    java: 'if (dist > THRESHOLD) geoRiskScore += 40;',
-  });
-  chain.push({
-    id: 'R008', rule: 'Credit Limit Auth', file: 'CREDITAUTH.TAL:88–145',
+    tal: 'IF DISTANCE > IMPOSSIBLE^TRAVEL THEN GEO^RISK += 40',
+    java: 'if (dist > THRESHOLD) geoRiskScore += 40;' });
+  chain.push({ id: 'R008', rule: 'Credit Limit', file: 'CREDITAUTH.TAL:88–145',
     action: creditOk
-      ? `$${(txn.balance + amt).toLocaleString()} < $${txn.limit.toLocaleString()} — approved`
-      : `$${(txn.balance + amt).toLocaleString()} > $${txn.limit.toLocaleString()} — OVERLIMIT`,
+      ? `$${(txn.balance + amt).toLocaleString()} < $${txn.limit.toLocaleString()}`
+      : `$${(txn.balance + amt).toLocaleString()} OVERLIMIT`,
     st: creditOk ? 'pass' : 'flag',
-    tal: 'IF (BALANCE + TXN^AMT) > CREDIT^LIMIT THEN DECLINE("51")',
-    java: 'if (projected.compareTo(limit) > 0) decline("51");',
-  });
-  chain.push({
-    id: 'R012', rule: 'AML/CTR Screening', file: 'AML-Policy-v4.2.pdf:§3.1',
-    action: txn.watchlist
-      ? 'WATCHLIST MATCH → BLOCKED & ESCALATED'
-      : amt > 10000 ? `$${amt.toLocaleString()} > $10K → CTR filed` : 'Below CTR threshold',
+    tal: 'IF (BALANCE + TXN^AMT) > LIMIT THEN DECLINE("51")',
+    java: 'if (projected.compareTo(limit) > 0) decline("51");' });
+  chain.push({ id: 'R012', rule: 'AML/CTR', file: 'AML-Policy:§3.1',
+    action: txn.watchlist ? 'WATCHLIST → BLOCKED' : amt > 10000 ? 'CTR filed' : 'Below threshold',
     st: txn.watchlist ? 'critical' : amt > 10000 ? 'info' : 'pass',
     tal: 'IF WATCHLIST^MATCH THEN BLOCK^ESCALATE',
-    java: 'if (watchlistMatch) blockAndEscalate(txn);',
-  });
+    java: 'if (watchlistMatch) blockAndEscalate(txn);' });
   if (txn.watchlist) return chain;
-  chain.push({
-    id: 'R013', rule: 'Auth Response Build', file: 'AUTHRESP.TAL:10–55',
-    action: `Code ${velOk && creditOk ? '00 APPROVED' : '59 REVIEW'} | Auth: ZF-${Date.now().toString(36).toUpperCase().slice(-5)}`,
+  chain.push({ id: 'R013', rule: 'Auth Response', file: 'AUTHRESP.TAL:10–55',
+    action: `Code ${velOk && creditOk ? '00 APPROVED' : '59 REVIEW'}`,
     st: velOk && creditOk ? 'pass' : 'flag',
     tal: 'CALL SEND^RESPONSE(RESP^MSG)',
-    java: 'return AuthResponse.builder().build();',
-  });
+    java: 'return AuthResponse.builder().build();' });
   return chain;
-}
-
-function buildLineageNodes(chain, flowStep) {
-  return chain.map((step, i) => {
-    const visible = i <= flowStep;
-    const sc = ST_COLORS[step.st];
-    return {
-      id: step.id,
-      position: { x: 80, y: i * 100 },
-      data: {
-        label: (
-          <div className="w-[260px] p-3 text-left">
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-xs font-bold" style={{ color: sc }}>{step.id}</span>
-              <span className="text-xs font-semibold">{step.rule}</span>
-              {visible && (
-                <span
-                  className="ml-auto rounded px-1.5 py-0.5 text-[9px] font-bold"
-                  style={{ background: sc + '22', color: sc }}
-                >
-                  {ST_LABELS[step.st]}
-                </span>
-              )}
-            </div>
-            <div className="mt-1 font-mono text-[9px] text-muted-foreground">{step.file}</div>
-            {visible && (
-              <div className="mt-1 text-[10px] leading-snug" style={{ color: ['fail', 'critical'].includes(step.st) ? sc : 'hsl(var(--muted-foreground))' }}>
-                {step.action}
-              </div>
-            )}
-          </div>
-        ),
-      },
-      style: {
-        background: 'hsl(var(--card))',
-        border: `2px solid ${visible ? sc : 'hsl(var(--border))'}`,
-        borderRadius: 12,
-        padding: 0,
-        opacity: visible ? 1 : 0.35,
-        transition: 'all .3s',
-      },
-    };
-  });
-}
-
-function buildLineageEdges(chain, flowStep) {
-  return chain.slice(0, -1).map((step, i) => ({
-    id: `le-${i}`,
-    source: step.id,
-    target: chain[i + 1].id,
-    type: 'smoothstep',
-    animated: i < flowStep,
-    markerEnd: { type: MarkerType.ArrowClosed },
-    style: {
-      stroke: i < flowStep ? 'hsl(var(--accent))' : 'hsl(var(--muted-foreground) / 0.3)',
-      strokeWidth: i < flowStep ? 2 : 1,
-    },
-  }));
 }
 
 export function LineageTab() {
@@ -187,16 +98,20 @@ export function LineageTab() {
   const timer = useRef(null);
 
   const chain = useMemo(() => buildChain(txn), [txn]);
-  const nodes = useMemo(() => buildLineageNodes(chain, flowStep), [chain, flowStep]);
-  const edges = useMemo(() => buildLineageEdges(chain, flowStep), [chain, flowStep]);
 
-  const [rfNodes, setRfNodes, onNodesChange] = useNodesState(nodes);
-  const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(edges);
-
-  useMemo(() => {
-    setRfNodes(nodes);
-    setRfEdges(edges);
-  }, [nodes, edges, setRfNodes, setRfEdges]);
+  // 3D positions: vertical pipeline with slight horizontal jitter
+  const positions = useMemo(() => {
+    const result = {};
+    const N = chain.length;
+    chain.forEach((step, i) => {
+      const t = i / Math.max(1, N - 1);
+      const y = 30 - t * 60; // top to bottom
+      const x = Math.sin(i * 1.3) * 6;
+      const z = Math.cos(i * 0.8) * 4;
+      result[step.id] = [x, y, z];
+    });
+    return result;
+  }, [chain]);
 
   const reset = () => {
     clearTimeout(timer.current);
@@ -210,68 +125,56 @@ export function LineageTab() {
       if (i >= chain.length) return;
       setFlowStep(i);
       i++;
-      timer.current = setTimeout(go, 450);
+      timer.current = setTimeout(go, 550);
     };
     setTimeout(go, 100);
   }, [chain.length]);
-
-  const onNodeClick = useCallback((_, node) => {
-    const step = chain.find((s) => s.id === node.id);
-    if (step) setSelected(step);
-  }, [chain]);
 
   return (
     <div className="px-6 py-6">
       <div className="mb-3">
         <h3 className="font-serif text-2xl font-bold tracking-tight">Live Transaction Lineage</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Enter a transaction and watch it flow through the rule chain in real time. Change any value and the path changes dynamically.
+          Enter a transaction and watch it flow through the rule chain in 3D. Drag to orbit, scroll to zoom.
         </p>
-        <div className="mt-1 text-xs font-semibold italic text-accent">
-          Click any rule node to see source TAL and target Java
-        </div>
       </div>
 
       {/* Inputs */}
-      <Card className="mb-4">
-        <CardContent className="p-4">
-          <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            Transaction — Change Any Value to Alter the Flow
-          </div>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
-            {[
-              { k: 'pan', l: 'PAN' }, { k: 'amount', l: 'Amount ($)' }, { k: 'mcc', l: 'MCC' },
-              { k: 'country', l: 'Country' }, { k: 'vel', l: 'Velocity' },
-              { k: 'limit', l: 'Credit Limit' }, { k: 'balance', l: 'Balance' },
-            ].map((f) => (
-              <div key={f.k}>
-                <label className="mb-1 block text-[9px] uppercase tracking-wider text-muted-foreground">
-                  {f.l}
-                </label>
-                <Input
-                  className="h-8 font-mono text-xs"
-                  value={txn[f.k]}
-                  onChange={(e) => {
-                    const val = ['amount', 'vel', 'limit', 'balance'].includes(f.k)
-                      ? Number(e.target.value) || 0 : e.target.value;
-                    setTxn({ ...txn, [f.k]: val });
-                    reset();
-                  }}
-                />
-              </div>
-            ))}
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {PRESETS.map((p) => (
-              <Button key={p.l} size="sm" variant="outline"
-                onClick={() => { setTxn({ ...txn, ...p.v }); reset(); }}
-              >
-                {p.l}
-              </Button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="mb-4 rounded-2xl border border-white/15 bg-black/5 p-4 backdrop-blur-xl">
+        <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Transaction Inputs
+        </div>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
+          {[
+            { k: 'pan', l: 'PAN' }, { k: 'amount', l: 'Amount ($)' }, { k: 'mcc', l: 'MCC' },
+            { k: 'country', l: 'Country' }, { k: 'vel', l: 'Velocity' },
+            { k: 'limit', l: 'Credit Limit' }, { k: 'balance', l: 'Balance' },
+          ].map((f) => (
+            <div key={f.k}>
+              <label className="mb-1 block text-[9px] uppercase tracking-wider text-muted-foreground">
+                {f.l}
+              </label>
+              <Input className="h-8 font-mono text-xs" value={txn[f.k]}
+                onChange={(e) => {
+                  const val = ['amount', 'vel', 'limit', 'balance'].includes(f.k)
+                    ? Number(e.target.value) || 0 : e.target.value;
+                  setTxn({ ...txn, [f.k]: val });
+                  reset();
+                }}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {PRESETS.map((p) => (
+            <Button key={p.l} size="sm" variant="outline"
+              onClick={() => { setTxn({ ...txn, ...p.v }); reset(); }}
+            >
+              {p.l}
+            </Button>
+          ))}
+        </div>
+      </div>
 
       {/* Controls */}
       <div className="mb-4 flex items-center gap-2">
@@ -288,64 +191,104 @@ export function LineageTab() {
         </div>
       </div>
 
-      {/* Flow + Detail split */}
-      <div className="grid gap-4" style={{ gridTemplateColumns: selected ? '1fr 380px' : '1fr' }}>
-        <Card className="h-[600px] overflow-hidden">
-          <ReactFlow
-            nodes={rfNodes}
-            edges={rfEdges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onNodeClick={onNodeClick}
-            fitView
-            proOptions={{ hideAttribution: true }}
-          >
-            <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-            <Controls className="!bg-card !border" />
-          </ReactFlow>
-        </Card>
+      {/* 3D Scene */}
+      <div className="relative h-[600px] overflow-hidden rounded-2xl border border-white/15">
+        <Scene cameraPosition={[35, 0, 35]} enableStars={true}>
+          {chain.slice(0, -1).map((step, i) => {
+            const f = positions[step.id];
+            const t = positions[chain[i + 1].id];
+            if (!f || !t) return null;
+            const visited = i < flowStep;
+            return (
+              <Edge
+                key={`e-${i}`}
+                from={f}
+                to={t}
+                color={visited ? '#fbbf24' : '#6366f1'}
+                highlighted={visited}
+                radius={0.08}
+              />
+            );
+          })}
+          {chain.map((step, i) => {
+            const pos = positions[step.id];
+            if (!pos) return null;
+            const visible = i <= flowStep;
+            return (
+              <GlassNode
+                key={step.id}
+                position={pos}
+                radius={2.2}
+                color={visible ? ST_COLORS[step.st] : '#475569'}
+                label={step.id}
+                sublabel={step.rule}
+                selected={selected?.id === step.id}
+                onClick={() => setSelected(step)}
+              />
+            );
+          })}
+        </Scene>
 
-        {selected && (
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-            <Card className="border-accent/30">
-              <CardContent className="p-5">
-                <div className="mb-3 flex items-start gap-2">
-                  <div className="flex-1">
-                    <span className="rounded bg-accent/15 px-2 py-0.5 font-mono text-xs font-bold text-accent">
-                      {selected.id}
-                    </span>
-                    <h4 className="mt-2 font-serif text-lg font-bold">{selected.rule}</h4>
-                    <div className="text-[10px] font-mono text-muted-foreground">{selected.file}</div>
-                  </div>
-                  <Button size="icon" variant="ghost" onClick={() => setSelected(null)}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="mb-3 rounded border p-2 text-xs"
-                  style={{
-                    background: ST_COLORS[selected.st] + '08',
-                    borderColor: ST_COLORS[selected.st] + '25',
-                    color: ST_COLORS[selected.st],
-                  }}
-                >
-                  {selected.action}
-                </div>
-                <div className="mb-3">
-                  <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Source TAL
-                  </div>
-                  <CodeBlock code={selected.tal} />
-                </div>
+        {/* Outcome overlay */}
+        {flowStep >= chain.length - 1 && flowStep >= 0 && (() => {
+          const last = chain[chain.length - 1];
+          const outcome =
+            last.st === 'critical' ? 'HARD BLOCK — Account frozen' :
+            last.st === 'fail' ? `DECLINED — ${last.action}` :
+            last.st === 'flag' ? 'SOFT DECLINE — Manual review' :
+            'APPROVED — Code 00';
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-2xl border border-white/20 bg-black/60 px-6 py-3 text-center backdrop-blur-2xl"
+            >
+              <div className="text-[10px] font-bold uppercase tracking-widest text-white/60">
+                Decision Outcome
+              </div>
+              <div className="mt-1 text-sm font-bold text-white">{outcome}</div>
+            </motion.div>
+          );
+        })()}
+
+        {/* Detail panel overlay */}
+        <AnimatePresence>
+          {selected && (
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 30 }}
+              className="absolute right-4 top-4 w-[360px] max-h-[560px] overflow-auto rounded-2xl border border-white/15 bg-black/50 p-5 backdrop-blur-2xl"
+            >
+              <div className="mb-3 flex items-start justify-between gap-2">
                 <div>
-                  <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-success">
-                    Target Java
-                  </div>
-                  <CodeBlock code={selected.java} />
+                  <span className="rounded bg-accent/20 px-2 py-0.5 font-mono text-xs font-bold text-accent">
+                    {selected.id}
+                  </span>
+                  <h4 className="mt-2 font-serif text-lg font-bold text-white">{selected.rule}</h4>
+                  <div className="font-mono text-[10px] text-white/50">{selected.file}</div>
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
+                <button onClick={() => setSelected(null)} className="text-white/60 hover:text-white">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div
+                className="mb-3 rounded-md border px-2 py-1.5 text-xs"
+                style={{
+                  background: ST_COLORS[selected.st] + '15',
+                  borderColor: ST_COLORS[selected.st] + '40',
+                  color: ST_COLORS[selected.st],
+                }}
+              >
+                {selected.action}
+              </div>
+              <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/50">Source TAL</div>
+              <CodeBlock code={selected.tal} className="mb-3" />
+              <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-emerald-400">Target Java</div>
+              <CodeBlock code={selected.java} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

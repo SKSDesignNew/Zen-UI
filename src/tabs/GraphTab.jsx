@@ -1,27 +1,17 @@
-import { useCallback, useMemo, useState } from 'react';
-import ReactFlow, {
-  Background, BackgroundVariant, Controls, MiniMap, MarkerType,
-  useNodesState, useEdgesState,
-} from 'reactflow';
-import 'reactflow/dist/style.css';
+import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, X } from 'lucide-react';
+import { Scene } from '@/components/three/Scene';
+import { GlassNode } from '@/components/three/GlassNode';
+import { Edge } from '@/components/three/Edge';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { CodeBlock } from '@/components/ui/code-block';
+import { compute3DLayout } from '@/lib/force-layout';
 import { RULES, EDGES, DOM_COLORS, CRIT_COLORS, getPath } from '@/lib/rules';
-import { SCALE_DOMS, SCALE_DOM_COLORS, DOM_COUNTS_MAP, RULE_NAMES, TAL_FILES } from '@/lib/scale-data';
+import { SCALE_DOMS, SCALE_DOM_COLORS, DOM_COUNTS_MAP } from '@/lib/scale-data';
 
-// Cluster (domain) layout positions
-const CLUSTER_POS = {
-  Operations: { x: 0, y: 0 }, Authorization: { x: 260, y: 0 }, Risk: { x: 520, y: 0 },
-  Settlement: { x: 0, y: 160 }, Fraud: { x: 260, y: 160 }, Reporting: { x: 520, y: 160 },
-  Credit: { x: 0, y: 320 }, Pricing: { x: 520, y: 320 },
-  Compliance: { x: 260, y: 320 }, Security: { x: 0, y: 480 },
-};
-
-const CLUSTER_EDGES = [
+const CLUSTER_LINKS = [
   ['Operations', 'Authorization'], ['Authorization', 'Fraud'], ['Authorization', 'Settlement'],
   ['Fraud', 'Credit'], ['Fraud', 'Compliance'], ['Credit', 'Pricing'], ['Pricing', 'Compliance'],
   ['Compliance', 'Settlement'], ['Settlement', 'Reporting'], ['Risk', 'Fraud'],
@@ -29,391 +19,221 @@ const CLUSTER_EDGES = [
   ['Reporting', 'Risk'],
 ];
 
-// 13-rule layout positions inside a domain drill
-const RULE_POS = {
-  R001: { x: 280, y: 0 }, R002: { x: 280, y: 100 }, R003: { x: 280, y: 200 },
-  R004: { x: 140, y: 300 }, R005: { x: 420, y: 300 }, R006: { x: 280, y: 400 },
-  R007: { x: 440, y: 500 }, R008: { x: 100, y: 500 }, R009: { x: 310, y: 550 },
-  R010: { x: 40, y: 650 }, R011: { x: 180, y: 650 }, R012: { x: 280, y: 750 }, R013: { x: 280, y: 860 },
-};
-
-function buildClusterNodes() {
-  return SCALE_DOMS.map((d) => ({
-    id: d,
-    position: CLUSTER_POS[d],
-    data: {
-      label: (
-        <div className="w-[170px] p-3 text-center">
-          <div className="text-xs font-bold" style={{ color: SCALE_DOM_COLORS[d] }}>{d}</div>
-          <div className="mt-1 font-serif text-2xl font-bold">
-            {((DOM_COUNTS_MAP[d] || 10000) / 1000).toFixed(1)}K
-          </div>
-          <div className="text-[9px] text-muted-foreground">rules</div>
-          <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-muted">
-            <div className="h-full bg-destructive/60" style={{ width: '15%' }} />
-          </div>
-        </div>
-      ),
-    },
-    style: {
-      background: 'hsl(var(--card))',
-      border: `2px solid ${SCALE_DOM_COLORS[d]}`,
-      borderRadius: 16,
-      padding: 0,
-      boxShadow: `0 4px 16px ${SCALE_DOM_COLORS[d]}22`,
-    },
-  }));
-}
-
-function buildClusterEdges() {
-  return CLUSTER_EDGES.map(([from, to], i) => ({
-    id: `e-${from}-${to}`,
-    source: from,
-    target: to,
-    type: 'smoothstep',
-    animated: true,
-    markerEnd: { type: MarkerType.ArrowClosed },
-    style: { stroke: 'hsl(var(--muted-foreground) / 0.4)', strokeWidth: 1.5 },
-  }));
-}
-
-function buildRuleNodes(highlightSet) {
-  return RULES.map((r) => ({
-    id: r.id,
-    position: RULE_POS[r.id],
-    data: {
-      label: (
-        <div className="w-[130px] p-2">
-          <div className="flex items-center justify-between">
-            <span className="font-mono text-xs font-bold" style={{ color: DOM_COLORS[r.dom] }}>
-              {r.id}
-            </span>
-            <span className="h-2 w-2 rounded-full" style={{ background: CRIT_COLORS[r.crit] }} />
-          </div>
-          <div className="mt-1 text-[10px] leading-tight">{r.name}</div>
-        </div>
-      ),
-    },
-    style: {
-      background: highlightSet.has(r.id) ? DOM_COLORS[r.dom] + '15' : 'hsl(var(--card))',
-      border: `2px solid ${highlightSet.has(r.id) ? DOM_COLORS[r.dom] : 'hsl(var(--border))'}`,
-      borderRadius: 12,
-      padding: 0,
-    },
-  }));
-}
-
-function buildRuleEdges(highlightSet) {
-  return EDGES.map((e, i) => {
-    const hl = highlightSet.has(e.from) && highlightSet.has(e.to);
-    return {
-      id: `re-${e.from}-${e.to}`,
-      source: e.from,
-      target: e.to,
-      type: 'smoothstep',
-      animated: hl,
-      markerEnd: { type: MarkerType.ArrowClosed },
-      style: {
-        stroke: hl ? 'hsl(var(--accent))' : 'hsl(var(--muted-foreground) / 0.3)',
-        strokeWidth: hl ? 2.5 : 1,
-      },
-    };
-  });
-}
-
 export function GraphTab() {
   const [drillDomain, setDrillDomain] = useState(null);
   const [selectedRule, setSelectedRule] = useState(null);
+  const [hoveredCluster, setHoveredCluster] = useState(null);
+
+  // Compute 3D positions for cluster view
+  const clusterPositions = useMemo(() => {
+    const nodes = SCALE_DOMS.map((id) => ({ id }));
+    const links = CLUSTER_LINKS.map(([source, target]) => ({ source, target }));
+    return compute3DLayout(nodes, links, { iterations: 250, charge: -800, linkDistance: 25 });
+  }, []);
+
+  // Compute 3D positions for rule drill view
+  const rulePositions = useMemo(() => {
+    const nodes = RULES.map((r) => ({ id: r.id }));
+    const links = EDGES.map((e) => ({ source: e.from, target: e.to }));
+    return compute3DLayout(nodes, links, { iterations: 300, charge: -200, linkDistance: 12 });
+  }, []);
 
   const highlightSet = useMemo(() => new Set(getPath(selectedRule)), [selectedRule]);
 
-  const clusterNodes = useMemo(buildClusterNodes, []);
-  const clusterEdges = useMemo(buildClusterEdges, []);
-  const ruleNodes = useMemo(() => buildRuleNodes(highlightSet), [highlightSet]);
-  const ruleEdges = useMemo(() => buildRuleEdges(highlightSet), [highlightSet]);
-
-  const [cNodes, , onCNodesChange] = useNodesState(clusterNodes);
-  const [cEdges, , onCEdgesChange] = useEdgesState(clusterEdges);
-  const [rNodes, setRNodes, onRNodesChange] = useNodesState(ruleNodes);
-  const [rEdges, setREdges, onREdgesChange] = useEdgesState(ruleEdges);
-
-  // Keep rule graph in sync with selection highlights
-  useMemo(() => {
-    setRNodes(buildRuleNodes(highlightSet));
-    setREdges(buildRuleEdges(highlightSet));
-  }, [highlightSet, setRNodes, setREdges]);
-
-  const onClusterNodeClick = useCallback((_, node) => setDrillDomain(node.id), []);
-  const onRuleNodeClick = useCallback((_, node) => {
-    const rule = RULES.find((r) => r.id === node.id);
-    if (rule) setSelectedRule(rule);
-  }, []);
-
   return (
-    <div className="flex h-[calc(100vh-120px)]">
-      {/* LEFT: Graph canvas */}
-      <div className="flex flex-1 flex-col border-r bg-muted/30">
-        <div className="flex items-center justify-between border-b bg-card/60 px-4 py-2 backdrop-blur-lg">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Z+Graph
-            </span>
+    <div className="relative h-[calc(100vh-120px)] w-full overflow-hidden">
+      {/* Three.js canvas */}
+      <Scene cameraPosition={drillDomain ? [0, 0, 60] : [0, 10, 70]}>
+        {!drillDomain ? (
+          // Cluster view — 10 domain glass spheres
+          <>
+            {CLUSTER_LINKS.map(([from, to], i) => {
+              const f = clusterPositions[from];
+              const t = clusterPositions[to];
+              if (!f || !t) return null;
+              const isHl = hoveredCluster === from || hoveredCluster === to;
+              return (
+                <Edge
+                  key={i}
+                  from={f}
+                  to={t}
+                  color={isHl ? '#fbbf24' : '#6366f1'}
+                  highlighted={isHl}
+                  radius={0.12}
+                />
+              );
+            })}
+            {SCALE_DOMS.map((d) => {
+              const pos = clusterPositions[d];
+              if (!pos) return null;
+              const count = DOM_COUNTS_MAP[d] || 10000;
+              return (
+                <GlassNode
+                  key={d}
+                  position={pos}
+                  radius={4 + (count / 20000)}
+                  color={SCALE_DOM_COLORS[d]}
+                  label={d}
+                  sublabel={`${(count / 1000).toFixed(1)}K rules`}
+                  selected={hoveredCluster === d}
+                  onClick={() => setDrillDomain(d)}
+                  onPointerOver={() => setHoveredCluster(d)}
+                  onPointerOut={() => setHoveredCluster(null)}
+                />
+              );
+            })}
+          </>
+        ) : (
+          // Rule drill view — 13 glass rule nodes
+          <>
+            {EDGES.map((e, i) => {
+              const f = rulePositions[e.from];
+              const t = rulePositions[e.to];
+              if (!f || !t) return null;
+              const isHl = highlightSet.has(e.from) && highlightSet.has(e.to);
+              return (
+                <Edge
+                  key={i}
+                  from={f}
+                  to={t}
+                  color={isHl ? '#fbbf24' : DOM_COLORS[RULES.find((r) => r.id === e.from)?.dom] || '#6366f1'}
+                  highlighted={isHl}
+                  radius={0.07}
+                />
+              );
+            })}
+            {RULES.map((r) => {
+              const pos = rulePositions[r.id];
+              if (!pos) return null;
+              return (
+                <GlassNode
+                  key={r.id}
+                  position={pos}
+                  radius={1.8 + (r.crit === 'HIGH' ? 0.6 : r.crit === 'MEDIUM' ? 0.3 : 0)}
+                  color={DOM_COLORS[r.dom]}
+                  label={r.id}
+                  sublabel={r.name.length > 16 ? r.name.slice(0, 15) + '…' : r.name}
+                  selected={selectedRule?.id === r.id || highlightSet.has(r.id)}
+                  onClick={() => setSelectedRule(r)}
+                />
+              );
+            })}
+          </>
+        )}
+      </Scene>
+
+      {/* Top-left header overlay */}
+      <div className="pointer-events-none absolute left-4 top-4 z-10">
+        <div className="pointer-events-auto rounded-xl border border-white/15 bg-black/40 px-4 py-3 backdrop-blur-xl">
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">Z+Graph</span>
             {drillDomain && (
               <>
-                <span className="text-muted-foreground">›</span>
+                <span className="text-white/40">›</span>
                 <span className="text-xs font-bold" style={{ color: SCALE_DOM_COLORS[drillDomain] }}>
                   {drillDomain}
                 </span>
               </>
             )}
+            {drillDomain && (
+              <button
+                onClick={() => { setDrillDomain(null); setSelectedRule(null); }}
+                className="ml-3 flex items-center gap-1 rounded-md border border-white/20 bg-white/5 px-2 py-1 text-[10px] font-semibold text-white/80 transition-colors hover:bg-white/10"
+              >
+                <ArrowLeft className="h-3 w-3" />
+                All Domains
+              </button>
+            )}
           </div>
-          {drillDomain && (
-            <Button size="sm" variant="outline" onClick={() => { setDrillDomain(null); setSelectedRule(null); }}>
-              <ArrowLeft className="h-3 w-3" />
-              All Domains
-            </Button>
-          )}
-        </div>
-        <div className="flex-1">
-          {!drillDomain ? (
-            <ReactFlow
-              nodes={cNodes}
-              edges={cEdges}
-              onNodesChange={onCNodesChange}
-              onEdgesChange={onCEdgesChange}
-              onNodeClick={onClusterNodeClick}
-              fitView
-              proOptions={{ hideAttribution: true }}
-            >
-              <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-              <Controls className="!bg-card !border" />
-              <MiniMap
-                className="!bg-card !border"
-                nodeColor={(n) => SCALE_DOM_COLORS[n.id] || '#94a3b8'}
-              />
-            </ReactFlow>
-          ) : (
-            <ReactFlow
-              nodes={rNodes}
-              edges={rEdges}
-              onNodesChange={onRNodesChange}
-              onEdgesChange={onREdgesChange}
-              onNodeClick={onRuleNodeClick}
-              fitView
-              proOptions={{ hideAttribution: true }}
-            >
-              <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-              <Controls className="!bg-card !border" />
-              <MiniMap
-                className="!bg-card !border"
-                nodeColor={(n) => {
-                  const r = RULES.find((x) => x.id === n.id);
-                  return r ? DOM_COLORS[r.dom] : '#94a3b8';
-                }}
-              />
-            </ReactFlow>
-          )}
+          <div className="mt-1 text-[10px] text-white/50">
+            {drillDomain
+              ? `${DOM_COUNTS_MAP[drillDomain]?.toLocaleString()} rules · click any node`
+              : '100K rules · 10 domains · drag to orbit · scroll to zoom'}
+          </div>
         </div>
       </div>
 
-      {/* RIGHT: Detail panel */}
-      <div className="w-[420px] overflow-auto bg-card p-6">
-        <AnimatePresence mode="wait">
-          {selectedRule ? (
-            <RuleDetail key={selectedRule.id} rule={selectedRule} onClose={() => setSelectedRule(null)} />
-          ) : drillDomain ? (
-            <DomainDetail key={drillDomain} domain={drillDomain} />
-          ) : (
-            <DomainOverview key="overview" onSelect={setDrillDomain} />
-          )}
-        </AnimatePresence>
+      {/* Top-right legend overlay */}
+      <div className="pointer-events-none absolute right-4 top-4 z-10">
+        <div className="pointer-events-auto max-w-[200px] rounded-xl border border-white/15 bg-black/40 px-4 py-3 backdrop-blur-xl">
+          <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-white/60">
+            {drillDomain ? 'Criticality' : 'Domains'}
+          </div>
+          <div className="space-y-1">
+            {drillDomain
+              ? Object.entries(CRIT_COLORS).map(([k, c]) => (
+                  <div key={k} className="flex items-center gap-2 text-[10px] text-white/80">
+                    <span className="h-2 w-2 rounded-full" style={{ background: c }} />
+                    {k}
+                  </div>
+                ))
+              : SCALE_DOMS.slice(0, 6).map((d) => (
+                  <div key={d} className="flex items-center gap-2 text-[10px] text-white/80">
+                    <span className="h-2 w-2 rounded-full" style={{ background: SCALE_DOM_COLORS[d] }} />
+                    {d}
+                  </div>
+                ))}
+          </div>
+        </div>
       </div>
+
+      {/* Right-side rule detail panel */}
+      <AnimatePresence>
+        {selectedRule && (
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 30 }}
+            className="absolute right-4 top-24 z-10 w-[380px] max-h-[calc(100vh-180px)] overflow-auto rounded-2xl border border-white/15 bg-black/50 p-5 backdrop-blur-2xl"
+          >
+            <div className="mb-3 flex items-start justify-between gap-2">
+              <div>
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <Badge style={{ background: DOM_COLORS[selectedRule.dom] + '33', color: DOM_COLORS[selectedRule.dom] }}>
+                    {selectedRule.dom}
+                  </Badge>
+                  <Badge variant="outline" style={{ borderColor: CRIT_COLORS[selectedRule.crit], color: CRIT_COLORS[selectedRule.crit] }}>
+                    {selectedRule.crit}
+                  </Badge>
+                </div>
+                <h3 className="font-serif text-lg font-bold text-white">
+                  {selectedRule.id}: {selectedRule.name}
+                </h3>
+              </div>
+              <button onClick={() => setSelectedRule(null)} className="text-white/60 hover:text-white">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="mb-4 text-xs leading-relaxed text-white/70">{selectedRule.desc}</p>
+
+            <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/50">
+              {selectedRule.src.r} — {selectedRule.src.f}:{selectedRule.src.l}
+            </div>
+            <CodeBlock code={selectedRule.tal} className="mb-3 max-h-[140px] overflow-auto" />
+
+            <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-emerald-400">Target Java</div>
+            <CodeBlock code={selectedRule.java} className="max-h-[140px] overflow-auto" />
+
+            <div className="mt-4 space-y-1 text-[11px]">
+              <div>
+                <span className="font-semibold text-white/80">Depends: </span>
+                {selectedRule.deps.length ? selectedRule.deps.join(', ') : <em className="text-white/40">none</em>}
+              </div>
+              <div>
+                <span className="font-semibold text-white/80">Triggers: </span>
+                {selectedRule.trig.length ? selectedRule.trig.join(', ') : <em className="text-white/40">terminal</em>}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Bottom hint */}
+      {!selectedRule && (
+        <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-white/15 bg-black/40 px-4 py-1.5 text-[10px] text-white/60 backdrop-blur-xl">
+          {drillDomain ? 'Click any rule to inspect its source TAL and Java' : 'Click any glass cluster to drill into its 13 rules'}
+        </div>
+      )}
     </div>
   );
 }
-
-function DomainOverview({ onSelect }) {
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <h3 className="mb-2 font-serif text-xl font-bold">100,000 Rules — by Domain</h3>
-      <p className="mb-4 text-sm text-muted-foreground">
-        Click any domain cluster on the graph or below to drill into its call graph.
-      </p>
-      <div className="grid grid-cols-2 gap-2">
-        {SCALE_DOMS.map((d) => (
-          <motion.button
-            key={d}
-            whileHover={{ y: -2 }}
-            onClick={() => onSelect(d)}
-            className="rounded-xl border-2 bg-card p-3 text-left transition-colors hover:border-accent"
-            style={{ borderColor: SCALE_DOM_COLORS[d] + '30' }}
-          >
-            <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-sm" style={{ background: SCALE_DOM_COLORS[d] }} />
-              <span className="text-xs font-bold">{d}</span>
-            </div>
-            <div className="mt-1 font-serif text-lg font-bold" style={{ color: SCALE_DOM_COLORS[d] }}>
-              {(DOM_COUNTS_MAP[d] || 0).toLocaleString()}
-            </div>
-            <div className="mt-0.5 line-clamp-1 text-[10px] leading-snug text-muted-foreground">
-              {(RULE_NAMES[d] || []).slice(0, 3).join(', ')}
-            </div>
-          </motion.button>
-        ))}
-      </div>
-    </motion.div>
-  );
-}
-
-function DomainDetail({ domain }) {
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <div className="mb-1 text-xs font-bold uppercase tracking-widest" style={{ color: SCALE_DOM_COLORS[domain] }}>
-        Domain Drill
-      </div>
-      <h3 className="mb-3 font-serif text-xl font-bold">{domain}</h3>
-      <Card className="mb-4">
-        <CardContent className="p-4">
-          <div className="mb-3 grid grid-cols-3 gap-2">
-            {[
-              { n: DOM_COUNTS_MAP[domain]?.toLocaleString() || '0', l: 'Total' },
-              { n: Math.round((DOM_COUNTS_MAP[domain] || 0) * 0.15).toLocaleString(), l: 'HIGH Crit' },
-              { n: (TAL_FILES[domain] || []).length, l: 'TAL Files' },
-            ].map((s) => (
-              <div key={s.l} className="rounded-md bg-muted p-2 text-center">
-                <div className="font-serif text-base font-bold" style={{ color: SCALE_DOM_COLORS[domain] }}>
-                  {s.n}
-                </div>
-                <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{s.l}</div>
-              </div>
-            ))}
-          </div>
-          <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Source Files</div>
-          <div className="flex flex-wrap gap-1.5">
-            {(TAL_FILES[domain] || []).map((f) => (
-              <span key={f} className="rounded border bg-card px-2 py-0.5 font-mono text-[9px] text-muted-foreground">
-                {f}
-              </span>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-      <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Rule Types</div>
-      <div className="space-y-1">
-        {(RULE_NAMES[domain] || []).slice(0, 12).map((rn, i) => (
-          <div key={i} className="flex items-center gap-2 rounded-md border bg-card px-3 py-1.5">
-            <span
-              className="rounded px-1.5 py-0.5 font-mono text-[9px] font-bold"
-              style={{ background: SCALE_DOM_COLORS[domain] + '15', color: SCALE_DOM_COLORS[domain] }}
-            >
-              R{String(i + 1).padStart(3, '0')}
-            </span>
-            <span className="text-xs">{rn}</span>
-          </div>
-        ))}
-      </div>
-    </motion.div>
-  );
-}
-
-function RuleDetail({ rule, onClose }) {
-  const [tab, setTab] = useState('trace');
-  const tabs = [
-    { k: 'trace', l: 'Trace' },
-    { k: 'source', l: 'Source' },
-    { k: 'target', l: 'Java' },
-    { k: 'meta', l: 'Meta' },
-  ];
-  return (
-    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
-      <div className="mb-3 flex items-start gap-2">
-        <div className="flex-1">
-          <div className="mb-1 flex flex-wrap items-center gap-2">
-            <Badge style={{ background: DOM_COLORS[rule.dom] + '22', color: DOM_COLORS[rule.dom] }}>
-              {rule.dom}
-            </Badge>
-            <Badge variant="outline" style={{ borderColor: CRIT_COLORS[rule.crit], color: CRIT_COLORS[rule.crit] }}>
-              {rule.crit}
-            </Badge>
-          </div>
-          <h3 className="font-serif text-lg font-bold">
-            {rule.id}: {rule.name}
-          </h3>
-        </div>
-        <Button size="icon" variant="ghost" onClick={onClose}>
-          ×
-        </Button>
-      </div>
-      <p className="mb-3 text-sm text-muted-foreground">{rule.desc}</p>
-
-      <div className="mb-3 flex gap-1 border-b">
-        {tabs.map((tb) => (
-          <button
-            key={tb.k}
-            onClick={() => setTab(tb.k)}
-            className={cn(
-              'relative px-3 py-2 text-xs font-semibold',
-              tab === tb.k ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            {tb.l}
-            {tab === tb.k && <motion.div layoutId="rule-tab" className="absolute inset-x-0 bottom-0 h-0.5 bg-accent" />}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'trace' && (
-        <div className="space-y-2 text-xs">
-          <div>
-            <span className="font-semibold">Depends on: </span>
-            {rule.deps.length ? (
-              rule.deps.map((d) => (
-                <Badge key={d} variant="info" className="mr-1">{d}</Badge>
-              ))
-            ) : (
-              <em className="text-muted-foreground">None — entry point</em>
-            )}
-          </div>
-          <div>
-            <span className="font-semibold">Triggers: </span>
-            {rule.trig.length ? (
-              rule.trig.map((d) => (
-                <Badge key={d} variant="success" className="mr-1">{d}</Badge>
-              ))
-            ) : (
-              <em className="text-muted-foreground">Terminal</em>
-            )}
-          </div>
-        </div>
-      )}
-      {tab === 'source' && (
-        <div>
-          <div className="mb-1 text-[10px] text-muted-foreground">
-            {rule.src.r} — {rule.src.f} (lines {rule.src.l})
-          </div>
-          <CodeBlock code={rule.tal} />
-        </div>
-      )}
-      {tab === 'target' && <CodeBlock code={rule.java} />}
-      {tab === 'meta' && (
-        <div className="grid grid-cols-2 gap-3 text-xs">
-          {[
-            ['Type', rule.type],
-            ['Domain', rule.dom],
-            ['Criticality', rule.crit],
-            ['Source', rule.src.f],
-            ['Lines', rule.src.l],
-            ['Routine', rule.src.r],
-          ].map(([k, v]) => (
-            <div key={k}>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{k}</div>
-              <div className="mt-0.5">{v}</div>
-            </div>
-          ))}
-        </div>
-      )}
-    </motion.div>
-  );
-}
-
-function cn(...a) { return a.filter(Boolean).join(' '); }
