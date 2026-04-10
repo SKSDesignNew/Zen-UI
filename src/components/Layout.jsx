@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import {
-  Zap, AlertTriangle, Pentagon, Diamond, List, CircleDot, Network,
-  Link2, Settings2, FlaskConical, BarChart3,
+  Zap, AlertTriangle, Pentagon, Diamond, CircleDot, Network,
+  Link2, Settings2, FlaskConical, BarChart3, Search,
 } from 'lucide-react';
 import { ZenLogo } from './ZenLogo';
 import { ThemeToggle } from './ThemeToggle';
@@ -14,12 +14,13 @@ export const NAV_ITEMS = [
   { k: 'engine', label: 'Z+ vs LLM', Icon: Settings2 },
   { k: 'pillars', label: '5 Pillars', Icon: Pentagon },
   { k: 'lineage', label: 'Z+', Icon: Link2 },
-  { k: 'sandbox', label: 'Z+Sandbox', Icon: FlaskConical },
+  // --- divider after lineage ---
   { k: 'usecase', label: 'Use Case', Icon: Diamond },
+  { k: 'discovery', label: 'Discovery', Icon: Search },
   { k: 'zresults', label: 'Z+ Results', Icon: BarChart3 },
-  { k: 'inventory', label: 'Rules', Icon: List },
-  { k: 'zg2', label: 'Z+Lens', Icon: Network },
-  { k: 'graph', label: 'Z+2', Icon: CircleDot },
+  // --- divider after zresults ---
+  { k: 'graph', label: 'Z+Lens', Icon: CircleDot },
+  { k: 'sandbox', label: 'Sandbox', Icon: FlaskConical },
 ];
 
 export function Layout({ view, setView, children }) {
@@ -52,7 +53,7 @@ export function Layout({ view, setView, children }) {
         {NAV_ITEMS.map(({ k, label, Icon }, i) => {
           const active = view === k;
           // Group separators: after engine (problem), after sandbox (solution), after zresults (proof)
-          const showDivider = k === 'engine' || k === 'sandbox' || k === 'zresults';
+          const showDivider = k === 'lineage' || k === 'zresults';
           return (
             <div key={k} className="flex items-center">
               <button

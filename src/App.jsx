@@ -6,9 +6,8 @@ import { LegacyTab } from '@/tabs/LegacyTab';
 import { AITrapTab } from '@/tabs/AITrapTab';
 import { PillarsTab } from '@/tabs/PillarsTab';
 import { UseCaseTab } from '@/tabs/UseCaseTab';
-import { InventoryTab } from '@/tabs/InventoryTab';
+import { DiscoveryTab } from '@/tabs/DiscoveryTab';
 import { GraphTab } from '@/tabs/GraphTab';
-import { ZG2Tab } from '@/tabs/ZG2Tab';
 import { LineageTab } from '@/tabs/LineageTab';
 import { EngineTab } from '@/tabs/EngineTab';
 import { SandboxTab } from '@/tabs/SandboxTab';
@@ -18,11 +17,10 @@ const VIEWS = {
   legacy: LegacyTab,
   aitrap: AITrapTab,
   pillars: PillarsTab,
-  usecase: (props) => <UseCaseTab onContinue={() => props.setView('pillars')} />,
+  usecase: UseCaseTab,
+  discovery: DiscoveryTab,
   zresults: ZPlusResultsTab,
-  inventory: InventoryTab,
   graph: GraphTab,
-  zg2: ZG2Tab,
   lineage: LineageTab,
   engine: EngineTab,
   sandbox: SandboxTab,
