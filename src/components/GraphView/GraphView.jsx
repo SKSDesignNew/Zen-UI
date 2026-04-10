@@ -88,7 +88,7 @@ export function GraphView({
     });
     // Fit + center after the initial layout settles
     setTimeout(() => {
-      try { cy.fit(undefined, 80); } catch {}
+      try { cy.fit(undefined, 100); } catch {}
     }, 600);
     cyRef.current = cy;
     expandedRef.current = new Set();
@@ -293,7 +293,7 @@ export function GraphView({
     cy.endBatch();
     setLayoutMode('compound');
     cy.layout(compoundLayout).run();
-    setTimeout(() => cy.fit(undefined, 60), 700);
+    setTimeout(() => cy.fit(undefined, 100), 700);
   };
 
   const handleExport = () => {

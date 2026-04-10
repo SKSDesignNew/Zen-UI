@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import {
   Zap, AlertTriangle, Pentagon, Diamond, List, CircleDot, Network,
-  Link2, Settings2, FlaskConical, SlidersHorizontal,
+  Link2, Settings2, FlaskConical,
 } from 'lucide-react';
 import { ZenLogo } from './ZenLogo';
 import { ThemeToggle } from './ThemeToggle';
@@ -19,7 +19,6 @@ export const NAV_ITEMS = [
   { k: 'inventory', label: 'Rules', Icon: List },
   { k: 'zg2', label: 'Z+Lens', Icon: Network },
   { k: 'graph', label: 'Z+2', Icon: CircleDot },
-  { k: 'whatif', label: 'What-If', Icon: SlidersHorizontal },
 ];
 
 export function Layout({ view, setView, children }) {

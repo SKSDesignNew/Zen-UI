@@ -12,7 +12,6 @@ import { ZG2Tab } from '@/tabs/ZG2Tab';
 import { LineageTab } from '@/tabs/LineageTab';
 import { EngineTab } from '@/tabs/EngineTab';
 import { SandboxTab } from '@/tabs/SandboxTab';
-import { WhatIfTab } from '@/tabs/WhatIfTab';
 
 const VIEWS = {
   legacy: LegacyTab,
@@ -25,7 +24,6 @@ const VIEWS = {
   lineage: LineageTab,
   engine: EngineTab,
   sandbox: SandboxTab,
-  whatif: WhatIfTab,
 };
 
 export default function App() {

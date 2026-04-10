@@ -21,10 +21,12 @@ export function useGraphData(rules) {
 
     // 10 compound domain nodes — pre-positioned in a circle so cytoscape can
     // render them even before any rules are mounted (empty compound parents
-    // otherwise collapse to a single point).
+    // otherwise collapse to a single point). Radius is tuned so the
+    // outermost circle edges (centers ± diameter/2) fit within the viewport
+    // after fit() is called with the layout's padding.
     const domainIds = Object.keys(DOMAIN_COLORS);
     const N = domainIds.length;
-    const RADIUS = 360;
+    const RADIUS = 290;
     const domainElements = domainIds.map((d, i) => {
       const count = countsByDomain[d] || 0;
       const angle = (i / N) * Math.PI * 2 - Math.PI / 2;

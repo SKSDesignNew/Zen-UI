@@ -17,17 +17,19 @@ import { cn } from '@/lib/utils';
 
 // ─── Cluster (domain) positions on a hand-arranged grid ──────────────────
 // 4-row layout: 3 / 3 / 2 / 2 nodes. Authorization is the central hub.
+// All y values are shifted down so the largest circle (Authorization, r≈92)
+// has its top edge well inside the viewBox.
 const CLUSTER_POS = {
-  Operations:    { x: 110, y:  90 },
-  Authorization: { x: 320, y:  70 },
-  Risk:          { x: 530, y:  90 },
-  Settlement:    { x: 100, y: 230 },
-  Fraud:         { x: 320, y: 230 },
-  Reporting:     { x: 540, y: 230 },
-  Credit:        { x: 130, y: 380 },
-  Pricing:       { x: 510, y: 380 },
-  Compliance:    { x: 320, y: 410 },
-  Security:      { x: 320, y: 540 },
+  Operations:    { x: 110, y: 130 },
+  Authorization: { x: 320, y: 110 },
+  Risk:          { x: 530, y: 130 },
+  Settlement:    { x: 100, y: 270 },
+  Fraud:         { x: 320, y: 270 },
+  Reporting:     { x: 540, y: 270 },
+  Credit:        { x: 130, y: 420 },
+  Pricing:       { x: 510, y: 420 },
+  Compliance:    { x: 320, y: 450 },
+  Security:      { x: 320, y: 590 },
 };
 
 // 14 edges between domain clusters — forms a connected web
@@ -320,7 +322,7 @@ function ClusterCanvas({ onSelect, hovered, setHovered }) {
           2,000 rules · 10 domains · click any circle to drill in
         </span>
       </div>
-      <svg viewBox="0 0 660 640" className="block w-full" style={{ maxHeight: 'calc(100vh - 260px)' }}>
+      <svg viewBox="0 0 660 720" className="block w-full" style={{ maxHeight: 'calc(100vh - 260px)' }}>
         {/* Arrow marker for highlighted edges */}
         <defs>
           <marker id="cluster-arrow" markerWidth="6" markerHeight="6" refX="5.5" refY="3" orient="auto">

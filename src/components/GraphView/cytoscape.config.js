@@ -26,9 +26,10 @@ export const CRIT_SIZE = {
 };
 
 // Compound (domain) node size grows with rule count. Authorization/Security
-// (370+) should look visibly larger than Risk (145).
+// (370+) should look visibly larger than Risk (145), without overflowing the
+// canvas — capped so the layout fits in the available height.
 export function domainNodeDiameter(count) {
-  return 80 + Math.sqrt(count) * 4;
+  return Math.min(140, 78 + Math.sqrt(count) * 3.4);
 }
 
 export function buildStylesheet() {
@@ -180,10 +181,12 @@ export const compoundLayout = {
 
 // Initial layout for the empty graph: respect the preset positions baked into
 // each domain element by useGraphData (a circle of 10 around the origin).
+// Padding has to be large enough that the biggest circle's full diameter fits
+// inside the viewport — otherwise the top/bottom circles get clipped.
 export const initialDomainLayout = {
   name: 'preset',
   fit: true,
-  padding: 60,
+  padding: 100,
   animate: false,
 };
 

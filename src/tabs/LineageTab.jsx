@@ -329,9 +329,9 @@ function ZenPlusPromise() {
       key: 'D', Icon: Lock, title: 'D+', subtitle: 'DETERMINISTIC',
       tagline: 'Same input = Same output. Every time.',
       proof: (
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           {[1, 2, 3].map((n) => (
-            <div key={n} className="flex items-center gap-1 rounded border border-emerald-400/40 bg-emerald-400/10 px-2 py-0.5 font-mono text-[10px] text-emerald-300">
+            <div key={n} className="flex items-center gap-1 rounded border border-success/40 bg-success/10 px-2 py-0.5 font-mono text-[10px] text-success">
               <Check className="h-2.5 w-2.5" />
               Run {n}
             </div>
@@ -344,12 +344,12 @@ function ZenPlusPromise() {
       key: 'L', Icon: Link2, title: 'L+', subtitle: 'LINEAGE',
       tagline: 'Every decision links back to source code.',
       proof: (
-        <div className="flex items-center gap-1.5 font-mono text-[10px] text-white/85">
-          <span className="rounded bg-white/5 px-1.5 py-0.5">FRAUDCHK.TAL:201</span>
-          <ChevronRight className="h-3 w-3 text-amber-300" />
-          <span className="rounded bg-amber-400/15 px-1.5 py-0.5 text-amber-300">R006</span>
-          <ChevronRight className="h-3 w-3 text-amber-300" />
-          <span className="rounded bg-white/5 px-1.5 py-0.5">VelocityCheckService.java</span>
+        <div className="flex flex-wrap items-center gap-1 font-mono text-[10px]">
+          <span className="rounded bg-muted px-1.5 py-0.5 text-foreground">FRAUDCHK.TAL:201</span>
+          <ChevronRight className="h-3 w-3 text-accent" />
+          <span className="rounded bg-accent/15 px-1.5 py-0.5 text-accent">R006</span>
+          <ChevronRight className="h-3 w-3 text-accent" />
+          <span className="rounded bg-muted px-1.5 py-0.5 text-foreground">VelocityCheckService.java</span>
         </div>
       ),
       llm: 'LLM: "Based on the general pattern…"',
@@ -358,13 +358,15 @@ function ZenPlusPromise() {
       key: 'T', Icon: ShieldCheck, title: 'T+', subtitle: 'TRACEABLE',
       tagline: 'Every output links forward to audit.',
       proof: (
-        <div className="flex items-center gap-2 font-mono text-[10px] text-white/85">
-          <Hash className="h-3 w-3 text-amber-300" />
-          <span className="rounded bg-white/5 px-1.5 py-0.5">SHA: a3f8c2e1</span>
-          <span className="text-white/40">·</span>
-          <span className="text-emerald-300">Immutable</span>
-          <span className="text-white/40">·</span>
-          <span className="text-white/70">Regulator-ready</span>
+        <div className="flex flex-wrap items-center gap-2 font-mono text-[10px]">
+          <span className="flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-foreground">
+            <Hash className="h-3 w-3 text-accent" />
+            SHA: a3f8c2e1
+          </span>
+          <span className="text-muted-foreground">·</span>
+          <span className="text-success">Immutable</span>
+          <span className="text-muted-foreground">·</span>
+          <span className="text-muted-foreground">Regulator-ready</span>
         </div>
       ),
       llm: 'LLM: Chat log is your audit trail',
@@ -372,23 +374,23 @@ function ZenPlusPromise() {
   ];
 
   return (
-    <section className="mb-8 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#0a0e1a] via-[#0f1424] to-[#0a0e1a] p-6 text-white shadow-xl">
-      <div className="mb-5 flex items-end justify-between">
+    <section className="mb-8">
+      <div className="mb-4 flex items-end justify-between">
         <div>
           <Badge variant="accent" className="mb-2 text-[10px] uppercase tracking-widest">
             The Zen+ Promise
           </Badge>
-          <h2 className="font-serif text-2xl font-bold tracking-tight text-white">
+          <h2 className="font-serif text-2xl font-bold tracking-tight">
             D + L + T = the governance layer
           </h2>
-          <p className="mt-1 text-xs text-white/60">
+          <p className="mt-1 text-xs text-muted-foreground">
             Opus 4.6 is the engine. ZenPlus is the chassis, the brakes, and the audit trail.
           </p>
         </div>
         {activePillar && (
           <button
             onClick={() => setActivePillar(null)}
-            className="text-[10px] font-semibold uppercase tracking-widest text-white/50 transition-colors hover:text-white"
+            className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
           >
             close ✕
           </button>
@@ -396,95 +398,60 @@ function ZenPlusPromise() {
       </div>
 
       {/* Three pillar cards */}
-      <div className="relative">
-        <svg
-          className="pointer-events-none absolute inset-0 h-full w-full"
-          preserveAspectRatio="none"
-          viewBox="0 0 100 10"
-        >
-          <line
-            x1="22" y1="5" x2="44" y2="5"
-            stroke="rgba(251,191,36,0.4)" strokeWidth="0.4"
-            strokeDasharray="1.5 1"
-            style={{ animation: 'dashFlow 3s linear infinite' }}
-          />
-          <line
-            x1="56" y1="5" x2="78" y2="5"
-            stroke="rgba(251,191,36,0.4)" strokeWidth="0.4"
-            strokeDasharray="1.5 1"
-            style={{ animation: 'dashFlow 3s linear infinite' }}
-          />
-        </svg>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {pillars.map((p) => {
-            const Icon = p.Icon;
-            const isActive = activePillar === p.key;
-            const proofColor = DLT_PROOFS[p.key].color;
-            return (
-              <button
-                key={p.key}
-                onClick={() => setActivePillar(isActive ? null : p.key)}
-                className={cn(
-                  'group relative rounded-xl border-2 p-5 text-left backdrop-blur-sm transition-all duration-300',
-                  isActive
-                    ? 'scale-[1.02] bg-white/[0.08]'
-                    : 'border-white/15 bg-white/[0.04] hover:scale-[1.02] hover:bg-white/[0.08]'
-                )}
-                style={
-                  isActive
-                    ? { borderColor: proofColor, boxShadow: `0 0 24px ${proofColor}40` }
-                    : undefined
-                }
-              >
-                <div className="mb-3 flex items-center gap-3">
-                  <div
-                    className="flex h-10 w-10 items-center justify-center rounded-lg transition-colors"
-                    style={{ background: `${proofColor}26`, color: proofColor }}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <div className="font-serif text-2xl font-bold" style={{ color: proofColor }}>
-                      {p.title}
-                    </div>
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-white/60">
-                      {p.subtitle}
-                    </div>
-                  </div>
-                </div>
-                <p className="mb-3 text-sm font-semibold text-white">{p.tagline}</p>
-                <div className="mb-3 rounded-lg border border-white/10 bg-black/30 p-2.5">
-                  {p.proof}
-                </div>
-                <div className="mb-2 text-[10px] italic text-white/40">{p.llm}</div>
-
-                {/* Hover hint + active chevron */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {pillars.map((p) => {
+          const Icon = p.Icon;
+          const isActive = activePillar === p.key;
+          return (
+            <button
+              key={p.key}
+              onClick={() => setActivePillar(isActive ? null : p.key)}
+              className={cn(
+                'group relative rounded-xl border-2 p-5 text-left transition-all duration-300',
+                isActive
+                  ? 'border-accent bg-accent/5 scale-[1.02] shadow-lg shadow-accent/20'
+                  : 'border-border bg-card hover:border-accent/50 hover:scale-[1.02] hover:shadow-md'
+              )}
+            >
+              <div className="mb-3 flex items-center gap-3">
                 <div
                   className={cn(
-                    'flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest transition-opacity',
-                    isActive
-                      ? 'opacity-100'
-                      : 'opacity-0 group-hover:opacity-100'
+                    'flex h-10 w-10 items-center justify-center rounded-lg transition-colors',
+                    isActive ? 'bg-accent/20 text-accent' : 'bg-muted text-muted-foreground group-hover:bg-accent/15 group-hover:text-accent'
                   )}
-                  style={{ color: proofColor }}
                 >
-                  {isActive ? '✓ proof open below' : 'click to see proof →'}
+                  <Icon className="h-5 w-5" />
                 </div>
-                {isActive && (
-                  <div
-                    className="absolute -bottom-3 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 50%, hsl(var(--card)) 50%)',
-                      borderRight: `2px solid ${proofColor}`,
-                      borderBottom: `2px solid ${proofColor}`,
-                    }}
-                  />
+                <div>
+                  <div className={cn('font-serif text-2xl font-bold', isActive ? 'text-accent' : 'text-foreground')}>
+                    {p.title}
+                  </div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    {p.subtitle}
+                  </div>
+                </div>
+              </div>
+              <p className="mb-3 text-sm font-semibold text-foreground">{p.tagline}</p>
+              <div className="mb-3 rounded-lg border bg-muted/40 p-2.5">
+                {p.proof}
+              </div>
+              <div className="mb-2 text-[10px] italic text-destructive/70">{p.llm}</div>
+
+              {/* Hover hint + active chevron */}
+              <div
+                className={cn(
+                  'flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-accent transition-opacity',
+                  isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                 )}
-              </button>
-            );
-          })}
-        </div>
+              >
+                {isActive ? '✓ proof open below' : 'click to see proof →'}
+              </div>
+              {isActive && (
+                <div className="absolute -bottom-3 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-b-2 border-r-2 border-accent bg-card" />
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Proof panel slides open below */}
@@ -505,12 +472,6 @@ function ZenPlusPromise() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      <style>{`
-        @keyframes dashFlow {
-          to { stroke-dashoffset: -10; }
-        }
-      `}</style>
     </section>
   );
 }
@@ -519,83 +480,70 @@ function ZenPlusPromise() {
 function DProof() {
   const d = DLT_PROOFS.D;
   return (
-    <div
-      className="rounded-2xl border-l-4 bg-black/40 p-5 backdrop-blur-sm"
-      style={{ borderLeftColor: d.color }}
-    >
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-          <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: d.color }}>
+    <Card className="border-accent/40 border-l-4">
+      <CardContent className="p-5">
+        <div className="mb-3">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-accent">
             D+ Proof
           </div>
-          <h3 className="font-serif text-lg font-bold text-white">{d.title}</h3>
+          <h3 className="font-serif text-lg font-bold">{d.title}</h3>
         </div>
-      </div>
 
-      <div className="mb-4">
-        <div className="mb-1 text-[9px] font-bold uppercase tracking-widest text-white/60">
-          Source TAL · PMTAPPR.tal · CHECK^PAYMENT^AUTHORITY (never changes)
+        <div className="mb-4">
+          <div className="mb-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+            Source TAL · PMTAPPR.tal · CHECK^PAYMENT^AUTHORITY (never changes)
+          </div>
+          <CodeBlock code={d.talSource} className="max-h-[180px] overflow-auto" />
         </div>
-        <pre className="overflow-auto rounded-lg border border-white/15 bg-black/60 p-3 font-mono text-[10px] leading-snug text-white/85">
-          <code>{d.talSource}</code>
-        </pre>
-      </div>
 
-      {/* LLM runs */}
-      <div className="mb-3">
-        <div className="mb-2 flex items-center gap-2">
-          <XCircle className="h-3.5 w-3.5 text-red-400" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-red-400">
-            LLM: same input → different output
-          </span>
+        {/* LLM runs */}
+        <div className="mb-3">
+          <div className="mb-2 flex items-center gap-2">
+            <XCircle className="h-3.5 w-3.5 text-destructive" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-destructive">
+              LLM: same input → different output
+            </span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <RunCard kind="bad" label="LLM Run 1">{d.llmRun1}</RunCard>
+            <RunCard kind="bad" label="LLM Run 2">{d.llmRun2}</RunCard>
+          </div>
+          <div className="mt-2 grid grid-cols-1 gap-2 text-[10px] md:grid-cols-2">
+            {d.llmDiffs.map((diff) => (
+              <div
+                key={diff.label}
+                className="rounded border border-destructive/30 bg-destructive/5 px-2 py-1"
+              >
+                <span className="text-muted-foreground">{diff.label}: </span>
+                <span className="font-mono text-destructive">{diff.run1}</span>
+                <span className="mx-1 text-muted-foreground">≠</span>
+                <span className="font-mono text-destructive">{diff.run2}</span>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="grid gap-3 md:grid-cols-2">
-          <RunCard kind="bad" label="LLM Run 1">
-            <pre className="font-mono text-[10px] leading-snug">{d.llmRun1}</pre>
-          </RunCard>
-          <RunCard kind="bad" label="LLM Run 2">
-            <pre className="font-mono text-[10px] leading-snug">{d.llmRun2}</pre>
-          </RunCard>
-        </div>
-        <div className="mt-2 grid grid-cols-2 gap-2 text-[10px]">
-          {d.llmDiffs.map((diff) => (
-            <div
-              key={diff.label}
-              className="rounded border border-red-500/30 bg-red-500/5 px-2 py-1"
-            >
-              <span className="text-red-300/70">{diff.label}: </span>
-              <span className="font-mono text-red-300">{diff.run1}</span>
-              <span className="text-red-300/40"> ≠ </span>
-              <span className="font-mono text-red-300">{diff.run2}</span>
-            </div>
-          ))}
-        </div>
-      </div>
 
-      {/* ZenPlus runs */}
-      <div className="mb-3">
-        <div className="mb-2 flex items-center gap-2">
-          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">
-            ZenPlus: same input → identical output, every run
-          </span>
+        {/* ZenPlus runs */}
+        <div className="mb-3">
+          <div className="mb-2 flex items-center gap-2">
+            <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-success">
+              ZenPlus: same input → identical output, every run
+            </span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <RunCard kind="good" label="ZenPlus Run 1">{d.zenRun}</RunCard>
+            <RunCard kind="good" label="ZenPlus Run 2">{d.zenRun}</RunCard>
+          </div>
+          <div className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-[11px] font-bold text-success">
+            <Check className="h-3.5 w-3.5" />
+            IDENTICAL · character-for-character · both AND-checks preserved
+          </div>
         </div>
-        <div className="grid gap-3 md:grid-cols-2">
-          <RunCard kind="good" label="ZenPlus Run 1">
-            <pre className="font-mono text-[10px] leading-snug">{d.zenRun}</pre>
-          </RunCard>
-          <RunCard kind="good" label="ZenPlus Run 2">
-            <pre className="font-mono text-[10px] leading-snug">{d.zenRun}</pre>
-          </RunCard>
-        </div>
-        <div className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-[11px] font-bold text-emerald-300">
-          <Check className="h-3.5 w-3.5" />
-          IDENTICAL · character-for-character · both AND-checks preserved
-        </div>
-      </div>
 
-      <ThePoint color={d.color}>{d.point}</ThePoint>
-    </div>
+        <ThePoint>{d.point}</ThePoint>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -603,215 +551,220 @@ function DProof() {
 function LProof() {
   const l = DLT_PROOFS.L;
   return (
-    <div
-      className="rounded-2xl border-l-4 bg-black/40 p-5 backdrop-blur-sm"
-      style={{ borderLeftColor: l.color }}
-    >
-      <div className="mb-3">
-        <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: l.color }}>
-          L+ Proof
-        </div>
-        <h3 className="font-serif text-lg font-bold text-white">{l.title}</h3>
-        <p className="mt-1 text-xs text-white/60">
-          This Java method exists in production. Where did it come from?
-        </p>
-      </div>
-
-      <pre className="mb-4 overflow-auto rounded-lg border border-white/15 bg-black/60 p-3 font-mono text-[10px] leading-snug text-white/85">
-        <code>{l.javaCode}</code>
-      </pre>
-
-      <div className="grid gap-3 md:grid-cols-2">
-        {/* LLM */}
-        <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-4">
-          <div className="mb-2 flex items-center gap-2">
-            <XCircle className="h-3.5 w-3.5 text-red-400" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-red-400">
-              LLM: where did this come from?
-            </span>
+    <Card className="border-accent/40 border-l-4">
+      <CardContent className="p-5">
+        <div className="mb-3">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-accent">
+            L+ Proof
           </div>
-          <p className="mb-3 rounded border border-red-500/20 bg-black/30 p-2 text-[11px] italic leading-relaxed text-white/70">
-            🤖 {l.llmAnswer}
+          <h3 className="font-serif text-lg font-bold">{l.title}</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            This Java method exists in production. Where did it come from?
           </p>
-          <div className="space-y-1">
-            {l.llmMissing.map((m) => (
-              <div key={m} className="flex items-center gap-2 text-[10px] text-red-300">
-                <XCircle className="h-3 w-3 flex-shrink-0" />
-                <span>{m}: </span>
-                <span className="font-mono italic text-red-300/70">unknown</span>
-              </div>
-            ))}
-          </div>
         </div>
 
-        {/* ZenPlus */}
-        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
-          <div className="mb-2 flex items-center gap-2">
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">
-              ZenPlus: where did this come from?
-            </span>
-          </div>
-          <div className="mb-3 space-y-1">
-            {l.zenMeta.map((m) => (
-              <div key={m.label} className="flex items-center gap-2 text-[10px]">
-                <CheckCircle2 className="h-3 w-3 flex-shrink-0 text-emerald-400" />
-                <span className="w-20 text-emerald-300/70">{m.label}</span>
-                <span className="font-mono text-emerald-200">{m.value}</span>
-              </div>
-            ))}
-          </div>
-          <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-400">
-            Original TAL · embedded
-          </div>
-          <pre className="mt-1 overflow-auto rounded border border-emerald-500/20 bg-black/40 p-2 font-mono text-[9px] leading-snug text-emerald-100/85">
-            <code>{l.talSource}</code>
-          </pre>
+        <div className="mb-4">
+          <CodeBlock code={l.javaCode} className="max-h-[160px] overflow-auto" />
         </div>
-      </div>
 
-      <ThePoint color={l.color}>{l.point}</ThePoint>
-    </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {/* LLM */}
+          <Card className="border-destructive/30 bg-destructive/5">
+            <CardContent className="p-4">
+              <div className="mb-2 flex items-center gap-2">
+                <XCircle className="h-3.5 w-3.5 text-destructive" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-destructive">
+                  LLM: where did this come from?
+                </span>
+              </div>
+              <p className="mb-3 rounded border bg-card p-2 text-[11px] italic leading-relaxed text-muted-foreground">
+                🤖 {l.llmAnswer}
+              </p>
+              <div className="space-y-1">
+                {l.llmMissing.map((m) => (
+                  <div key={m} className="flex items-center gap-2 text-[10px] text-destructive">
+                    <XCircle className="h-3 w-3 flex-shrink-0" />
+                    <span>{m}: </span>
+                    <span className="font-mono italic text-destructive/70">unknown</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ZenPlus */}
+          <Card className="border-success/30 bg-success/5">
+            <CardContent className="p-4">
+              <div className="mb-2 flex items-center gap-2">
+                <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-success">
+                  ZenPlus: where did this come from?
+                </span>
+              </div>
+              <div className="mb-3 space-y-1">
+                {l.zenMeta.map((m) => (
+                  <div key={m.label} className="flex items-center gap-2 text-[10px]">
+                    <CheckCircle2 className="h-3 w-3 flex-shrink-0 text-success" />
+                    <span className="w-24 text-muted-foreground">{m.label}</span>
+                    <span className="font-mono text-foreground">{m.value}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="text-[9px] font-bold uppercase tracking-widest text-success">
+                Original TAL · embedded
+              </div>
+              <CodeBlock code={l.talSource} className="mt-1 max-h-[160px] overflow-auto text-[9px]" />
+            </CardContent>
+          </Card>
+        </div>
+
+        <ThePoint>{l.point}</ThePoint>
+      </CardContent>
+    </Card>
   );
 }
 
 // ─── T+ Proof: Why Was This Payment Held? ────────────────────────────────
 function TProof() {
   const t = DLT_PROOFS.T;
-  const stepColor = (r) =>
-    r === 'pass' ? '#10b981' : r === 'hold' ? '#f59e0b' : r === 'skip' ? '#94a3b8' : '#ef4444';
+  const stepClass = (r) =>
+    r === 'pass'
+      ? 'border-success/40 text-success'
+      : r === 'hold'
+      ? 'border-warning/40 text-warning'
+      : r === 'skip'
+      ? 'border-muted-foreground/30 text-muted-foreground'
+      : 'border-destructive/40 text-destructive';
   return (
-    <div
-      className="rounded-2xl border-l-4 bg-black/40 p-5 backdrop-blur-sm"
-      style={{ borderLeftColor: t.color }}
-    >
-      <div className="mb-3">
-        <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: t.color }}>
-          T+ Proof
-        </div>
-        <h3 className="font-serif text-lg font-bold text-white">{t.title}</h3>
-        <p className="mt-1 text-xs text-white/60">{t.scenario} was HELD. Why?</p>
-      </div>
-
-      {/* LLM audit */}
-      <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/5 p-4">
-        <div className="mb-2 flex items-center gap-2">
-          <XCircle className="h-3.5 w-3.5 text-red-400" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-red-400">
-            LLM Audit Trail
-          </span>
-        </div>
-        <div className="rounded border border-red-500/20 bg-black/30 p-3 font-mono text-[10px] italic leading-relaxed text-white/65">
-          <span className="text-white/40">User: </span>
-          Process payment for claim WC-2024-00847
-          <br />
-          <span className="text-white/40">Assistant: </span>
-          {t.llmAudit}
-        </div>
-        <div className="mt-2 space-y-1">
-          {[
-            'Is this auditable? Can you prove it wasn\'t edited?',
-            'Can you replay this decision with different inputs?',
-            'Will this produce the same result tomorrow?',
-          ].map((q, i) => (
-            <div key={i} className="flex items-start gap-2 text-[10px] text-red-300">
-              <AlertTriangle className="mt-0.5 h-3 w-3 flex-shrink-0" />
-              <span>{q}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ZenPlus audit chain */}
-      <div className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
-        <div className="mb-3 flex items-center gap-2">
-          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">
-            ZenPlus Audit Chain — 5 rules in sequence
-          </span>
-        </div>
-
-        {/* Pipeline of 5 steps */}
-        <div className="mb-3 grid grid-cols-5 gap-1.5">
-          {t.steps.map((s, i) => {
-            const c = stepColor(s.result);
-            return (
-              <motion.div
-                key={s.id}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className="rounded border bg-black/40 p-2 text-center"
-                style={{ borderColor: `${c}80` }}
-              >
-                <div className="font-mono text-[8px] text-white/50">{s.id}</div>
-                <div className="text-[10px] font-bold text-white">{s.name}</div>
-                <div
-                  className="mt-1 text-[9px] font-bold uppercase"
-                  style={{ color: c }}
-                >
-                  {s.result === 'pass' && '✓ pass'}
-                  {s.result === 'hold' && '⚠ hold'}
-                  {s.result === 'skip' && '— skip'}
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-
-        {/* Lien detail */}
-        <div className="mb-3 rounded border border-amber-500/30 bg-amber-500/5 p-2 text-[10px]">
-          <div className="mb-1 flex items-center gap-2 font-bold text-amber-300">
-            <AlertTriangle className="h-3 w-3" />
-            R-PMT-005: Lien found
-          </div>
-          <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 font-mono text-amber-100/80">
-            <span>Type: {t.lienDetail.type}</span>
-            <span>Amount: {t.lienDetail.amount}</span>
-            <span>Deduction: {t.lienDetail.pct}</span>
-            <span>Net payment: {t.lienDetail.net}</span>
-            <span className="col-span-2 text-amber-300/60">Source: {t.lienDetail.source}</span>
-          </div>
-        </div>
-
-        {/* Hash chain */}
+    <Card className="border-accent/40 border-l-4">
+      <CardContent className="p-5">
         <div className="mb-3">
-          <div className="mb-1 text-[9px] font-bold uppercase tracking-widest text-emerald-400">
-            Cryptographic Hash Chain
+          <div className="text-[10px] font-bold uppercase tracking-widest text-accent">
+            T+ Proof
           </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {t.hashes.map((h, i) => (
-              <div key={i} className="flex items-center gap-1.5">
-                <div className="rounded border border-emerald-500/30 bg-black/40 px-2 py-1 font-mono text-[10px] text-emerald-300">
-                  [{h}]
+          <h3 className="font-serif text-lg font-bold">{t.title}</h3>
+          <p className="mt-1 text-xs text-muted-foreground">{t.scenario} was HELD. Why?</p>
+        </div>
+
+        {/* LLM audit */}
+        <Card className="mb-4 border-destructive/30 bg-destructive/5">
+          <CardContent className="p-4">
+            <div className="mb-2 flex items-center gap-2">
+              <XCircle className="h-3.5 w-3.5 text-destructive" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-destructive">
+                LLM Audit Trail
+              </span>
+            </div>
+            <div className="rounded border bg-card p-3 font-mono text-[10px] italic leading-relaxed text-muted-foreground">
+              <span className="text-muted-foreground/60">User: </span>
+              Process payment for claim WC-2024-00847
+              <br />
+              <span className="text-muted-foreground/60">Assistant: </span>
+              {t.llmAudit}
+            </div>
+            <div className="mt-2 space-y-1">
+              {[
+                "Is this auditable? Can you prove it wasn't edited?",
+                'Can you replay this decision with different inputs?',
+                'Will this produce the same result tomorrow?',
+              ].map((q, i) => (
+                <div key={i} className="flex items-start gap-2 text-[10px] text-destructive">
+                  <AlertTriangle className="mt-0.5 h-3 w-3 flex-shrink-0" />
+                  <span>{q}</span>
                 </div>
-                {i < t.hashes.length - 1 && (
-                  <ChevronRight className="h-3 w-3 text-emerald-500/60" />
-                )}
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ZenPlus audit chain */}
+        <Card className="mb-4 border-success/30 bg-success/5">
+          <CardContent className="p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-success">
+                ZenPlus Audit Chain — 5 rules in sequence
+              </span>
+            </div>
+
+            {/* Pipeline of 5 steps */}
+            <div className="mb-3 grid grid-cols-5 gap-1.5">
+              {t.steps.map((s, i) => (
+                <motion.div
+                  key={s.id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className={cn('rounded border bg-card p-2 text-center', stepClass(s.result))}
+                >
+                  <div className="font-mono text-[8px] text-muted-foreground">{s.id}</div>
+                  <div className="text-[10px] font-bold text-foreground">{s.name}</div>
+                  <div className="mt-1 text-[9px] font-bold uppercase">
+                    {s.result === 'pass' && '✓ pass'}
+                    {s.result === 'hold' && '⚠ hold'}
+                    {s.result === 'skip' && '— skip'}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Lien detail */}
+            <div className="mb-3 rounded border border-warning/30 bg-warning/5 p-2 text-[10px]">
+              <div className="mb-1 flex items-center gap-2 font-bold text-warning">
+                <AlertTriangle className="h-3 w-3" />
+                R-PMT-005: Lien found
               </div>
-            ))}
-          </div>
-          <p className="mt-1.5 text-[9px] italic text-white/50">
-            Each hash includes the previous. Tamper any link → entire chain invalidates.
-          </p>
-        </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 font-mono text-foreground/80">
+                <span>Type: {t.lienDetail.type}</span>
+                <span>Amount: {t.lienDetail.amount}</span>
+                <span>Deduction: {t.lienDetail.pct}</span>
+                <span>Net payment: {t.lienDetail.net}</span>
+                <span className="col-span-2 text-muted-foreground">
+                  Source: {t.lienDetail.source}
+                </span>
+              </div>
+            </div>
 
-        {/* Badges */}
-        <div className="flex flex-wrap gap-1.5">
-          {t.badges.map((b) => (
-            <span
-              key={b}
-              className="flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-emerald-300"
-            >
-              <Check className="h-2.5 w-2.5" />
-              {b}
-            </span>
-          ))}
-        </div>
-      </div>
+            {/* Hash chain */}
+            <div className="mb-3">
+              <div className="mb-1 text-[9px] font-bold uppercase tracking-widest text-success">
+                Cryptographic Hash Chain
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {t.hashes.map((h, i) => (
+                  <div key={i} className="flex items-center gap-1.5">
+                    <div className="rounded border border-success/30 bg-card px-2 py-1 font-mono text-[10px] text-success">
+                      [{h}]
+                    </div>
+                    {i < t.hashes.length - 1 && (
+                      <ChevronRight className="h-3 w-3 text-success/60" />
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p className="mt-1.5 text-[9px] italic text-muted-foreground">
+                Each hash includes the previous. Tamper any link → entire chain invalidates.
+              </p>
+            </div>
 
-      <ThePoint color={t.color}>{t.point}</ThePoint>
-    </div>
+            {/* Badges */}
+            <div className="flex flex-wrap gap-1.5">
+              {t.badges.map((b) => (
+                <span
+                  key={b}
+                  className="flex items-center gap-1 rounded-full border border-success/40 bg-success/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-success"
+                >
+                  <Check className="h-2.5 w-2.5" />
+                  {b}
+                </span>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <ThePoint>{t.point}</ThePoint>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -819,37 +772,31 @@ function TProof() {
 function RunCard({ kind, label, children }) {
   const isBad = kind === 'bad';
   return (
-    <div
-      className={cn(
-        'rounded-lg border p-3',
-        isBad ? 'border-red-500/30 bg-red-500/5' : 'border-emerald-500/30 bg-emerald-500/5'
-      )}
-    >
-      <div
-        className={cn(
-          'mb-1 text-[9px] font-bold uppercase tracking-widest',
-          isBad ? 'text-red-400' : 'text-emerald-400'
-        )}
-      >
-        {label}
-      </div>
-      <div className={cn('overflow-auto', isBad ? 'text-red-100/85' : 'text-emerald-100/85')}>
-        {children}
-      </div>
-    </div>
+    <Card className={cn(isBad ? 'border-destructive/30 bg-destructive/5' : 'border-success/30 bg-success/5')}>
+      <CardContent className="p-3">
+        <div
+          className={cn(
+            'mb-1 text-[9px] font-bold uppercase tracking-widest',
+            isBad ? 'text-destructive' : 'text-success'
+          )}
+        >
+          {label}
+        </div>
+        <pre className="overflow-auto rounded bg-primary p-2 font-mono text-[10px] leading-snug text-primary-foreground/85">
+          <code>{children}</code>
+        </pre>
+      </CardContent>
+    </Card>
   );
 }
 
-function ThePoint({ color, children }) {
+function ThePoint({ children }) {
   return (
-    <div
-      className="mt-4 rounded-lg border-l-4 bg-white/[0.04] p-3"
-      style={{ borderLeftColor: color }}
-    >
-      <div className="mb-1 text-[9px] font-bold uppercase tracking-widest" style={{ color }}>
+    <div className="mt-4 rounded-lg border border-l-4 border-l-accent bg-accent/5 p-3">
+      <div className="mb-1 text-[9px] font-bold uppercase tracking-widest text-accent">
         The Point
       </div>
-      <p className="text-xs leading-relaxed text-white/85">{children}</p>
+      <p className="text-xs leading-relaxed text-foreground">{children}</p>
     </div>
   );
 }
@@ -1408,92 +1355,6 @@ export function LineageTab() {
 
       {/* SECTION 1 — The Zen+ Promise */}
       <ZenPlusPromise />
-
-      {/* Transaction input + scenario presets */}
-      <Card className="mb-4">
-        <CardContent className="p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <CreditCard className="h-4 w-4 text-accent" />
-            <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Transaction
-            </div>
-            <div className="ml-auto flex gap-2 text-[11px] text-muted-foreground">
-              <Badge variant="outline" className="font-mono">
-                ${Number(txn.amount).toLocaleString()}
-              </Badge>
-              <Badge variant="outline" className="gap-1 font-mono">
-                <Globe className="h-2.5 w-2.5" />
-                {txn.country}
-              </Badge>
-              <Badge variant="outline" className="gap-1 font-mono">
-                <Activity className="h-2.5 w-2.5" />
-                vel {txn.vel}
-              </Badge>
-              {txn.watchlist && (
-                <Badge variant="destructive" className="gap-1 font-mono">
-                  <Flag className="h-2.5 w-2.5" />
-                  watchlist
-                </Badge>
-              )}
-            </div>
-          </div>
-
-          {/* Preset cards */}
-          <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
-            {PRESETS.map((p) => {
-              const active = activePreset === p.k;
-              return (
-                <button
-                  key={p.k}
-                  onClick={() => applyPreset(p)}
-                  className={cn(
-                    'rounded-lg border-2 p-3 text-left transition-all',
-                    active ? 'shadow-md' : 'opacity-80 hover:opacity-100'
-                  )}
-                  style={{ borderColor: active ? p.color : 'hsl(var(--border))' }}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full" style={{ background: p.color }} />
-                    <span className="text-xs font-bold">{p.l}</span>
-                  </div>
-                  <div className="mt-1 font-mono text-[10px] text-muted-foreground">{p.sub}</div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Editable inputs (compact, collapsible feel) */}
-          <details className="text-xs">
-            <summary className="cursor-pointer text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
-              Edit raw fields
-            </summary>
-            <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-7">
-              {[
-                { k: 'pan', l: 'PAN' }, { k: 'amount', l: 'Amount' },
-                { k: 'mcc', l: 'MCC' }, { k: 'country', l: 'Country' },
-                { k: 'vel', l: 'Velocity' }, { k: 'limit', l: 'Limit' },
-                { k: 'balance', l: 'Balance' },
-              ].map((f) => (
-                <div key={f.k}>
-                  <label className="mb-1 block text-[9px] uppercase tracking-wider text-muted-foreground">
-                    {f.l}
-                  </label>
-                  <Input
-                    className="h-7 font-mono text-[10px]"
-                    value={txn[f.k]}
-                    onChange={(e) => {
-                      const val = ['amount', 'vel', 'limit', 'balance'].includes(f.k)
-                        ? Number(e.target.value) || 0 : e.target.value;
-                      setTxn({ ...txn, [f.k]: val });
-                      reset();
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          </details>
-        </CardContent>
-      </Card>
 
       {/* SECTION 2 — Horizontal Pipeline */}
       <PipelineFlow
