@@ -61,8 +61,8 @@ export function Layout({ view, setView, children }) {
                 className={cn(
                   'group -mb-[2px] flex items-center gap-1.5 whitespace-nowrap border-b-[3px] px-4 py-3 text-xs transition-all duration-200',
                   active
-                    ? 'border-accent bg-gradient-to-t from-accent/[0.06] to-transparent font-semibold text-accent'
-                    : 'border-transparent font-normal text-muted-foreground hover:border-border hover:bg-gradient-to-t hover:from-border/10 hover:to-transparent hover:text-foreground'
+                    ? 'border-accent bg-gradient-to-t from-accent/[0.06] to-transparent font-bold text-accent'
+                    : 'border-transparent font-semibold text-muted-foreground hover:border-border hover:bg-gradient-to-t hover:from-border/10 hover:to-transparent hover:text-foreground'
                 )}
               >
                 <Icon
