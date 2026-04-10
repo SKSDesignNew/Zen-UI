@@ -12,12 +12,14 @@ import { ZG2Tab } from '@/tabs/ZG2Tab';
 import { LineageTab } from '@/tabs/LineageTab';
 import { EngineTab } from '@/tabs/EngineTab';
 import { SandboxTab } from '@/tabs/SandboxTab';
+import { ZPlusResultsTab } from '@/tabs/ZPlusResultsTab';
 
 const VIEWS = {
   legacy: LegacyTab,
   aitrap: AITrapTab,
   pillars: PillarsTab,
   usecase: (props) => <UseCaseTab onContinue={() => props.setView('pillars')} />,
+  zresults: ZPlusResultsTab,
   inventory: InventoryTab,
   graph: GraphTab,
   zg2: ZG2Tab,

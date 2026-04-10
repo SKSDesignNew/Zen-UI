@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import {
   Zap, AlertTriangle, Pentagon, Diamond, List, CircleDot, Network,
-  Link2, Settings2, FlaskConical,
+  Link2, Settings2, FlaskConical, BarChart3,
 } from 'lucide-react';
 import { ZenLogo } from './ZenLogo';
 import { ThemeToggle } from './ThemeToggle';
@@ -16,6 +16,7 @@ export const NAV_ITEMS = [
   { k: 'lineage', label: 'Z+', Icon: Link2 },
   { k: 'sandbox', label: 'Z+Sandbox', Icon: FlaskConical },
   { k: 'usecase', label: 'Use Case', Icon: Diamond },
+  { k: 'zresults', label: 'Z+ Results', Icon: BarChart3 },
   { k: 'inventory', label: 'Rules', Icon: List },
   { k: 'zg2', label: 'Z+Lens', Icon: Network },
   { k: 'graph', label: 'Z+2', Icon: CircleDot },
