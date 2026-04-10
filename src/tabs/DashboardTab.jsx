@@ -6,11 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 const STAGES = [
-  { name: 'Inventory', pct: 100, count: '100,000', desc: 'Every TAL routine scanned, every business rule tagged with domain, criticality, and source.', color: 'success', Icon: Search },
-  { name: 'Extract', pct: 87, count: '87,000', desc: 'Rules extracted as atomic units with AST metadata, call graphs computed across all TAL files.', color: 'accent', Icon: CheckCircle2 },
-  { name: 'Convert', pct: 64, count: '64,000', desc: 'TAL routines converted to Java inside governed sandbox with field-level reconciliation.', color: 'info', Icon: Wrench },
-  { name: 'Validate', pct: 52, count: '52,000', desc: 'Behavioral equivalence verified: synthetic transactions per rule, regression, security scan.', color: 'accent', Icon: Shield },
-  { name: 'Production', pct: 38, count: '38,000', desc: 'Validated Java deployed with immutable audit trail, rollback capability, real-time monitoring.', color: 'success', Icon: Rocket },
+  { name: 'Inventory', pct: 100, count: '2,000', desc: 'Every TAL routine scanned, every business rule tagged with domain, criticality, and source.', color: 'success', Icon: Search },
+  { name: 'Extract', pct: 87, count: '1,740', desc: 'Rules extracted as atomic units with AST metadata, call graphs computed across all TAL files.', color: 'accent', Icon: CheckCircle2 },
+  { name: 'Convert', pct: 64, count: '1,280', desc: 'TAL routines converted to Java inside governed sandbox with field-level reconciliation.', color: 'info', Icon: Wrench },
+  { name: 'Validate', pct: 52, count: '1,040', desc: 'Behavioral equivalence verified: synthetic transactions per rule, regression, security scan.', color: 'accent', Icon: Shield },
+  { name: 'Production', pct: 38, count: '760', desc: 'Validated Java deployed with immutable audit trail, rollback capability, real-time monitoring.', color: 'success', Icon: Rocket },
 ];
 
 const PERSONAS = [
@@ -41,7 +41,7 @@ export function DashboardTab() {
       <div className="mb-6">
         <h2 className="font-serif text-3xl font-bold tracking-tight">Migration Dashboard</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Real-time progress across 100,000 rules. Click any stage to see details.
+          Real-time progress across 2,000 rules. Click any stage to see details.
         </p>
       </div>
 

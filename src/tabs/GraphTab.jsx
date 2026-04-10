@@ -148,7 +148,7 @@ export function GraphTab() {
           <div className="mt-1 text-[10px] text-white/50">
             {drillDomain
               ? `${DOM_COUNTS_MAP[drillDomain]?.toLocaleString()} rules · click any node`
-              : '100K rules · 10 domains · drag to orbit · scroll to zoom'}
+              : '2K rules · 10 domains · drag to orbit · scroll to zoom'}
           </div>
         </div>
       </div>

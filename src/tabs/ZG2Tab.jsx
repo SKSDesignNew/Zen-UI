@@ -21,9 +21,9 @@ function hexToRgba(hex, alpha = 1) {
   ];
 }
 
-const SIZE_BY_CRIT = { HIGH: 6, MEDIUM: 4, LOW: 2.5 };
+const SIZE_BY_CRIT = { HIGH: 14, MEDIUM: 9, LOW: 6 };
 const GREY_COLOR = [0.1, 0.12, 0.18, 0.4];
-const SPACE_SIZE = 4096;
+const SPACE_SIZE = 2048;
 
 export function ZG2Tab() {
   const containerRef = useRef(null);
@@ -44,12 +44,12 @@ export function ZG2Tab() {
     const init = async () => {
       // Defer to next tick so the loader paints
       await new Promise((r) => setTimeout(r, 50));
-      setProgress('Generating 100,000 rules…');
+      setProgress('Generating 2,000 rules…');
       const rules = genScaleRules();
       if (cancelled) return;
 
       await new Promise((r) => setTimeout(r, 50));
-      setProgress('Building dependency graph…');
+      setProgress('Building 5,000 dependencies…');
       const edges = genScaleEdges(rules);
       if (cancelled) return;
 
@@ -107,17 +107,17 @@ export function ZG2Tab() {
         hoveredPointRingColor: '#fbbf24',
         focusedPointRingColor: '#fbbf24',
         renderLinks: true,
-        linkColor: [1, 1, 1, 0.04],
-        linkWidth: 0.4,
+        linkColor: [1, 1, 1, 0.18],
+        linkWidth: 0.8,
         linkArrows: false,
         curvedLinks: false,
         enableSimulation: true,
-        simulationGravity: 0.25,
-        simulationRepulsion: 1.0,
-        simulationLinkSpring: 1.0,
-        simulationLinkDistance: 3,
+        simulationGravity: 0.3,
+        simulationRepulsion: 1.5,
+        simulationLinkSpring: 1.2,
+        simulationLinkDistance: 8,
         simulationFriction: 0.85,
-        simulationDecay: 5000,
+        simulationDecay: 3000,
         showFPSMonitor: false,
         scalePointsOnZoom: true,
         onClick: (index) => {
@@ -226,7 +226,7 @@ export function ZG2Tab() {
           >
             <Loader2 className="h-10 w-10 animate-spin text-amber-400" />
             <div className="mt-4 font-serif text-2xl font-bold text-white">{progress}</div>
-            <div className="mt-1 text-sm text-white/60">100,000 rules · 300,000 dependencies · GPU force simulation</div>
+            <div className="mt-1 text-sm text-white/60">2,000 rules · 5,000 dependencies · GPU force simulation</div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -239,7 +239,7 @@ export function ZG2Tab() {
             <Badge variant="accent" className="text-[10px]">Full Call Graph</Badge>
           </div>
           <div className="mt-1 text-[10px] text-white/60">
-            {loading ? 'Loading…' : '100,000 rules · 300,000 dependencies · GPU force simulation'}
+            {loading ? 'Loading…' : '2,000 rules · 5,000 dependencies · GPU force simulation'}
           </div>
         </div>
       </div>
@@ -294,7 +294,7 @@ export function ZG2Tab() {
                 domFilter === 'All' ? 'bg-white/15 text-white' : 'text-white/60 hover:bg-white/10'
               )}
             >
-              All ({(100000).toLocaleString()})
+              All ({(2000).toLocaleString()})
             </button>
             {SCALE_DOMS.map((d) => (
               <button
@@ -362,7 +362,7 @@ export function ZG2Tab() {
               </div>
             </div>
             <div className="mt-4 rounded-lg border border-white/10 bg-white/5 p-2 text-[10px] text-white/70">
-              ✓ One of {(100000).toLocaleString()} rules in the governed repository.
+              ✓ One of {(2000).toLocaleString()} rules in the governed repository.
               Click another node or press <kbd className="rounded border border-white/20 px-1">Esc</kbd> to deselect.
             </div>
           </motion.div>

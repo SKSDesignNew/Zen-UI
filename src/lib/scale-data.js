@@ -1,4 +1,6 @@
-// 100K rule generator for the Inventory + Z+Graph cluster view
+// Rule generator for the Inventory + Z+Graph cluster view + Z+G2 call graph
+export const TOTAL_RULES = 2000;
+export const TOTAL_EDGES_TARGET = 5000;
 export const SCALE_DOMS = [
   'Authorization', 'Fraud', 'Credit', 'Pricing', 'Compliance',
   'Settlement', 'Reporting', 'Risk', 'Operations', 'Security',
@@ -39,7 +41,7 @@ export const TAL_FILES = {
 export function genScaleRules() {
   const rules = [];
   const seed = (i) => (Math.sin(i * 9301 + 49297) % 1 + 1) % 1;
-  for (let i = 0; i < 100000; i++) {
+  for (let i = 0; i < TOTAL_RULES; i++) {
     const dom = SCALE_DOMS[Math.floor(seed(i) * 10)];
     const names = RULE_NAMES[dom];
     const name = names[Math.floor(seed(i + 1) * names.length)];
@@ -49,7 +51,7 @@ export function genScaleRules() {
     const s3 = seed(i + 3);
     const crit = crits[s3 < 0.15 ? 0 : s3 < 0.5 ? 1 : 2];
     const lineStart = Math.floor(seed(i + 4) * 2000) + 1;
-    const variant = Math.floor(i / 200);
+    const variant = Math.floor(i / 20);
     rules.push({
       id: `R${String(i + 1).padStart(6, '0')}`,
       name: `${name}${variant > 0 ? ' v' + variant : ''}`,
@@ -64,7 +66,7 @@ export function genScaleRules() {
 
 export const DOM_COUNTS_MAP = SCALE_DOMS.reduce((a, d, i) => {
   const dist = [0.12, 0.14, 0.10, 0.08, 0.11, 0.09, 0.07, 0.10, 0.10, 0.09];
-  a[d] = Math.round(100000 * dist[i]);
+  a[d] = Math.round(TOTAL_RULES * dist[i]);
   return a;
 }, {});
 
@@ -84,8 +86,8 @@ const DOMAIN_NEIGHBORS = {
 };
 
 /**
- * Generate ~300K dependency edges for the 100K rules.
- * Each rule triggers 2-4 downstream rules. Realistic call-graph density.
+ * Generate ~5K dependency edges for the 2K rules — average 2.5 per rule.
+ * 70% intra-domain, 30% cross-domain. Capped at TOTAL_EDGES_TARGET.
  */
 export function genScaleEdges(rules) {
   const links = [];
@@ -98,10 +100,14 @@ export function genScaleEdges(rules) {
   const seed = (i) => (Math.sin(i * 12.9898 + 78.233) % 1 + 1) % 1;
 
   for (let i = 0; i < N; i++) {
+    if (links.length >= TOTAL_EDGES_TARGET) break;
     const r = rules[i];
-    const triggerCount = 2 + Math.floor(seed(i + 0.7) * 3); // 2-4 triggers
+    // 1-4 triggers per rule, weighted toward 2-3 (avg ~2.5)
+    const s = seed(i + 0.7);
+    const triggerCount = s < 0.15 ? 1 : s < 0.55 ? 2 : s < 0.85 ? 3 : 4;
     const neighbors = DOMAIN_NEIGHBORS[r.dom] || [r.dom];
     for (let k = 0; k < triggerCount; k++) {
+      if (links.length >= TOTAL_EDGES_TARGET) break;
       // 70% intra-domain, 30% cross-domain to a neighbor
       const cross = seed(i * 7 + k * 3.1) > 0.7;
       const targetDom = cross ? neighbors[Math.floor(seed(i * 11 + k) * neighbors.length)] : r.dom;

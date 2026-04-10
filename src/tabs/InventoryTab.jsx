@@ -75,12 +75,12 @@ export function InventoryTab() {
         <div>
           <h3 className="font-serif text-2xl font-bold tracking-tight">Governed Rules Repository</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            100,000 atomic rules extracted across 10 domains from 9M+ lines of TAL
+            2,000 atomic rules extracted across 10 domains from 9M+ lines of TAL
           </p>
         </div>
         <div className="flex gap-3">
           {[
-            { n: '100K', l: 'Total Rules', c: 'text-accent' },
+            { n: '2K', l: 'Total Rules', c: 'text-accent' },
             { n: critCounts.HIGH.toLocaleString(), l: 'High Critical', c: 'text-destructive' },
             { n: '10', l: 'Domains', c: 'text-info' },
             { n: '50', l: 'TAL Files', c: 'text-success' },
@@ -103,7 +103,7 @@ export function InventoryTab() {
           </div>
           <div className="mb-3 flex h-7 overflow-hidden rounded-md">
             {SCALE_DOMS.map((d) => {
-              const pct = (domCounts[d] / 100000) * 100;
+              const pct = (domCounts[d] / 2000) * 100;
               return (
                 <div
                   key={d}
