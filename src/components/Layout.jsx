@@ -72,13 +72,6 @@ export function Layout({ view, setView, children }) {
             </button>
           );
         })}
-        <div className="ml-auto flex items-center gap-3 whitespace-nowrap text-xs text-muted-foreground">
-          <span>13 Rules</span>
-          <span className="opacity-50">·</span>
-          <span>6 Domains</span>
-          <span className="opacity-50">·</span>
-          <span>8 TAL Files</span>
-        </div>
       </nav>
 
       {/* Main content */}
