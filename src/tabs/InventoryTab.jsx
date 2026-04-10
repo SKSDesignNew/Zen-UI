@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileCode, FileText } from 'lucide-react';
+import { Search, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileCode, FileText, Table2, Network } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,10 +8,13 @@ import { Badge } from '@/components/ui/badge';
 import { SCALE_DOMS, SCALE_DOM_COLORS, genScaleRules } from '@/lib/scale-data';
 import { CRIT_COLORS } from '@/lib/rules';
 import { cn } from '@/lib/utils';
+import { GraphView } from '@/components/GraphView';
 
 const PER_PAGE = 50;
 
 export function InventoryTab() {
+  const [viewMode, setViewMode] = useState('table');
+  const [selectedRuleId, setSelectedRuleId] = useState(null);
   const allRef = useRef(null);
   if (!allRef.current) allRef.current = genScaleRules();
 
@@ -78,7 +81,26 @@ export function InventoryTab() {
             2,000 atomic rules extracted across 10 domains from 9M+ lines of TAL
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
+          {/* Table / Graph view toggle */}
+          <div className="flex items-center gap-1 rounded-lg border bg-muted p-1">
+            {[
+              { k: 'table', l: 'Table', Icon: Table2 },
+              { k: 'graph', l: 'Graph', Icon: Network },
+            ].map((m) => (
+              <button
+                key={m.k}
+                onClick={() => setViewMode(m.k)}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors',
+                  viewMode === m.k ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <m.Icon className="h-3.5 w-3.5" />
+                {m.l}
+              </button>
+            ))}
+          </div>
           {[
             { n: '2K', l: 'Total Rules', c: 'text-accent' },
             { n: critCounts.HIGH.toLocaleString(), l: 'High Critical', c: 'text-destructive' },
@@ -95,6 +117,18 @@ export function InventoryTab() {
         </div>
       </div>
 
+      {viewMode === 'graph' && (
+        <div className="h-[calc(100vh-260px)] w-full">
+          <GraphView
+            rules={allRef.current || []}
+            onRuleSelect={(id) => setSelectedRuleId(id)}
+            activeSearch={search}
+            activeDomain={domFilter}
+            activeCriticality={critFilter === 'All' ? null : critFilter}
+          />
+        </div>
+      )}
+      {viewMode === 'table' && <>
       {/* Domain distribution */}
       <Card className="mb-4">
         <CardContent className="p-4">
@@ -286,6 +320,7 @@ export function InventoryTab() {
           </Button>
         </div>
       </div>
+      </>}
     </div>
   );
 }

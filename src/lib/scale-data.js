@@ -38,41 +38,9 @@ export const TAL_FILES = {
   Security: ['ENCCHK.TAL','TOKVAULT.TAL','KEYROT.TAL','ACCESSCTL.TAL','WAFPROC.TAL'],
 };
 
-export function genScaleRules() {
-  const rules = [];
-  const seed = (i) => (Math.sin(i * 9301 + 49297) % 1 + 1) % 1;
-  for (let i = 0; i < TOTAL_RULES; i++) {
-    const dom = SCALE_DOMS[Math.floor(seed(i) * 10)];
-    const names = RULE_NAMES[dom];
-    const name = names[Math.floor(seed(i + 1) * names.length)];
-    const files = TAL_FILES[dom];
-    const file = files[Math.floor(seed(i + 2) * files.length)];
-    const crits = ['HIGH', 'MEDIUM', 'LOW'];
-    const s3 = seed(i + 3);
-    const crit = crits[s3 < 0.15 ? 0 : s3 < 0.5 ? 1 : 2];
-    const lineStart = Math.floor(seed(i + 4) * 2000) + 1;
-    const variant = Math.floor(i / 20);
-    rules.push({
-      id: `R${String(i + 1).padStart(6, '0')}`,
-      name: `${name}${variant > 0 ? ' v' + variant : ''}`,
-      dom, crit,
-      type: seed(i + 5) < 0.85 ? 'code' : 'document',
-      file,
-      lines: `${lineStart}–${lineStart + Math.floor(seed(i + 6) * 120) + 20}`,
-    });
-  }
-  return rules;
-}
-
-export const DOM_COUNTS_MAP = SCALE_DOMS.reduce((a, d, i) => {
-  const dist = [0.12, 0.14, 0.10, 0.08, 0.11, 0.09, 0.07, 0.10, 0.10, 0.09];
-  a[d] = Math.round(TOTAL_RULES * dist[i]);
-  return a;
-}, {});
-
 // Cross-domain coupling: each rule preferentially triggers ~70% intra-domain,
 // ~30% to a related domain (forming the dense call graph BFSI systems actually have).
-const DOMAIN_NEIGHBORS = {
+export const DOMAIN_NEIGHBORS = {
   Authorization: ['Fraud', 'Credit', 'Settlement'],
   Fraud: ['Authorization', 'Risk', 'Compliance'],
   Credit: ['Authorization', 'Pricing'],
@@ -84,6 +52,74 @@ const DOMAIN_NEIGHBORS = {
   Operations: ['Authorization', 'Settlement', 'Security'],
   Security: ['Authorization', 'Operations'],
 };
+
+// Exact domain distribution for the Governed Rules Repository (totals 2000).
+export const DOM_COUNTS_MAP = {
+  Authorization: 370,
+  Security: 372,
+  Fraud: 174,
+  Compliance: 161,
+  Operations: 175,
+  Settlement: 157,
+  Credit: 148,
+  Pricing: 149,
+  Reporting: 149,
+  Risk: 145,
+};
+
+// Generate 2000 rules with both legacy field names (id/name/dom/crit/file/lines)
+// and the canonical names used by GraphView (ruleId/ruleName/domain/criticality/
+// sourceFile/lineStart/lineEnd/secondaryDomain).
+export function genScaleRules() {
+  const rules = [];
+  const seed = (i) => (Math.sin(i * 9301 + 49297) % 1 + 1) % 1;
+  // Build a flat list of (domain, slot) by walking each domain's count.
+  const slots = [];
+  for (const dom of Object.keys(DOM_COUNTS_MAP)) {
+    for (let k = 0; k < DOM_COUNTS_MAP[dom]; k++) slots.push(dom);
+  }
+  for (let i = 0; i < slots.length; i++) {
+    const dom = slots[i];
+    const names = RULE_NAMES[dom];
+    const name = names[Math.floor(seed(i + 1) * names.length)];
+    const files = TAL_FILES[dom];
+    const file = files[Math.floor(seed(i + 2) * files.length)];
+    const s3 = seed(i + 3);
+    const crit = s3 < 0.15 ? 'HIGH' : s3 < 0.5 ? 'MEDIUM' : 'LOW';
+    const lineStart = Math.floor(seed(i + 4) * 2000) + 1;
+    const lineEnd = lineStart + Math.floor(seed(i + 6) * 120) + 20;
+    const variant = Math.floor(i / 20);
+    const id = `R${String(i + 1).padStart(6, '0')}`;
+    // ~15% of rules span a second domain (organic neighbor)
+    const neighbors = DOMAIN_NEIGHBORS[dom] || [];
+    const secondary =
+      neighbors.length && seed(i + 7) < 0.15
+        ? neighbors[Math.floor(seed(i + 8) * neighbors.length)]
+        : undefined;
+    rules.push({
+      // Legacy field names — kept for InventoryTab, GraphTab, LineageTab
+      id,
+      name: `${name}${variant > 0 ? ' v' + variant : ''}`,
+      dom,
+      crit,
+      type: seed(i + 5) < 0.85 ? 'code' : 'document',
+      file,
+      lines: `${lineStart}–${lineEnd}`,
+      // Canonical field names — required by GraphView spec
+      ruleId: id,
+      ruleName: `${name}${variant > 0 ? ' v' + variant : ''}`,
+      domain: dom,
+      criticality: crit,
+      sourceFile: file,
+      lineStart,
+      lineEnd,
+      ...(secondary ? { secondaryDomain: secondary } : {}),
+    });
+  }
+  return rules;
+}
+
+// (DOMAIN_NEIGHBORS hoisted to top of file)
 
 /**
  * Generate ~5K dependency edges for the 2K rules — average 2.5 per rule.
