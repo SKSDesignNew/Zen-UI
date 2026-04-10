@@ -13,11 +13,11 @@ export const NAV_ITEMS = [
   { k: 'aitrap', label: 'The AI Trap', Icon: AlertTriangle },
   { k: 'engine', label: 'Z+ vs LLM', Icon: Settings2 },
   { k: 'pillars', label: '5 Pillars', Icon: Pentagon },
+  { k: 'lineage', label: 'Z+', Icon: Link2 },
   { k: 'usecase', label: 'Use Case', Icon: Diamond },
   { k: 'inventory', label: 'Rules', Icon: List },
   { k: 'graph', label: 'Z+Graph', Icon: CircleDot },
   { k: 'zg2', label: 'Z+G2', Icon: Network },
-  { k: 'lineage', label: 'Lineage', Icon: Link2 },
   { k: 'sandbox', label: 'Sandbox', Icon: FlaskConical },
   { k: 'whatif', label: 'What-If', Icon: SlidersHorizontal },
 ];
