@@ -40,18 +40,33 @@ export function ZG2Tab() {
       const rules = genScaleRules();
       const edges = genScaleEdges(rules);
       if (cancelled) return;
-      // Cosmograph wants point objects with id and per-row metadata for color
-      const points = rules.map((r) => ({
-        id: r.id,
-        name: r.name,
-        dom: r.dom,
-        crit: r.crit,
-        file: r.file,
-        lines: r.lines,
-        type: r.type,
-        color: SCALE_DOM_COLORS[r.dom],
-      }));
-      setData({ points, links: edges });
+      // Cosmograph requires both an id column and a sequential integer index column.
+      const idToIndex = new Map();
+      const points = rules.map((r, i) => {
+        idToIndex.set(r.id, i);
+        return {
+          index: i,
+          id: r.id,
+          name: r.name,
+          dom: r.dom,
+          crit: r.crit,
+          file: r.file,
+          lines: r.lines,
+          type: r.type,
+          color: SCALE_DOM_COLORS[r.dom],
+          size: r.crit === 'HIGH' ? 6 : r.crit === 'MEDIUM' ? 4 : 3,
+        };
+      });
+      // Cosmograph wants link source/target as numeric indices for fastest path.
+      const links = [];
+      for (let k = 0; k < edges.length; k++) {
+        const s = idToIndex.get(edges[k].source);
+        const t = idToIndex.get(edges[k].target);
+        if (s !== undefined && t !== undefined) {
+          links.push({ sourceIndex: s, targetIndex: t });
+        }
+      }
+      setData({ points, links });
       setLoading(false);
     }, 60);
     return () => { cancelled = true; clearTimeout(id); };
@@ -97,12 +112,14 @@ export function ZG2Tab() {
           points={filteredPoints}
           links={data.links}
           pointIdBy="id"
+          pointIndexBy="index"
           pointColorBy="color"
           pointLabelBy="id"
-          pointSizeBy="crit"
-          pointSizeByFn={(crit) => (crit === 'HIGH' ? 6 : crit === 'MEDIUM' ? 4 : 3)}
-          linkSourceBy="source"
-          linkTargetBy="target"
+          pointSizeBy="size"
+          linkSourceBy="sourceIndex"
+          linkSourceIndexBy="sourceIndex"
+          linkTargetBy="targetIndex"
+          linkTargetIndexBy="targetIndex"
           backgroundColor="#0a0e1a"
           linkColor={[1, 1, 1, 0.06]}
           linkWidth={0.4}
