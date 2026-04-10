@@ -15,7 +15,7 @@ export const NAV_ITEMS = [
   { k: 'usecase', label: 'Use Case', Icon: Diamond },
   { k: 'inventory', label: 'Rules', Icon: List },
   { k: 'graph', label: 'Z+Graph', Icon: CircleDot },
-  { k: 'zg2', label: 'Z+G2', Icon: Network },
+  { k: 'organic', label: 'Organic Web', Icon: Network },
   { k: 'lineage', label: 'Lineage', Icon: Link2 },
   { k: 'engine', label: 'LLM vs ZF', Icon: Settings2 },
   { k: 'sandbox', label: 'Sandbox', Icon: FlaskConical },
